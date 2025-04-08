@@ -24,9 +24,9 @@ var nextDuration = time.Second
 func updateNextDuration(deltaThreads int) {
 	tmp := nextDuration
 	switch {
-	case deltaThreads < 7:
+	case deltaThreads < 15:
 		tmp = time.Duration(float64(nextDuration) * 1.5)
-	case deltaThreads > 14:
+	case deltaThreads > 20:
 		tmp = time.Duration(float64(nextDuration) * 0.7)
 	}
 
