@@ -63,6 +63,8 @@ func timeSeries(c *gin.Context) {
 
 	start := time.Now().AddDate(0, 0, -1)
 	end := time.Now()
+	// 默认5分钟
+	duration := time.Minute * 5
 
 	if req.StartDate != "" {
 		start, err = time.Parse("2006-01-02 15:04", req.StartDate)
@@ -78,6 +80,13 @@ func timeSeries(c *gin.Context) {
 			return
 		}
 	}
+	if req.TimeInterval != "" {
+		duration, err = time.ParseDuration(req.TimeInterval)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+	}
 
 	tc := gen.Q.ThreadCount
 	find, err := tc.Where(tc.DateTime.Gte(start.Unix()), tc.DateTime.Lte(end.Unix())).Find()
@@ -85,21 +94,21 @@ func timeSeries(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	divBy5Min := lo.GroupBy(find, func(item *model.ThreadCount) int64 {
-		return item.DateTime / 60 / 5 // 每5分钟为一组
+	divByDuration := lo.GroupBy(find, func(item *model.ThreadCount) int64 {
+		return item.DateTime / int64(duration.Seconds()) // 每 duration 为一组
 	})
 
-	rMap := lo.MapValues(divBy5Min, func(value []*model.ThreadCount, key int64) int {
+	rMap := lo.MapValues(divByDuration, func(value []*model.ThreadCount, key int64) int {
 		return lo.SumBy(value, func(item *model.ThreadCount) int {
 			return item.Count
 		})
 	})
 	resp := []timeseriesResp{}
 
-	for cur := start; !cur.After(end); cur = cur.Add(time.Minute * 5) {
-		tmpTimestamp := cur.Unix() / 60 / 5
+	for cur := start; !cur.After(end); cur = cur.Add(duration) {
+		tmpTimestamp := cur.Unix() / int64(duration.Seconds())
 
-		tmpTime := time.Unix(tmpTimestamp*60*5, 0)
+		tmpTime := time.Unix(tmpTimestamp*int64(duration.Seconds()), 0)
 		retTimeMilli := tmpTime.UnixMilli()
 		resp = append(resp, timeseriesResp{
 			Timestamp: retTimeMilli,
@@ -116,8 +125,9 @@ func timeSeries(c *gin.Context) {
 }
 
 type timeseriesReq struct {
-	StartDate string `form:"startDate"`
-	EndDate   string `form:"endDate"`
+	StartDate    string `form:"startDate"`
+	EndDate      string `form:"endDate"`
+	TimeInterval string `form:"timeInterval"`
 }
 
 type timeseriesResp struct {
