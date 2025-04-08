@@ -19,13 +19,25 @@ type SyncServerConfig struct {
 	DB  string
 }
 
-var nextDuration time.Duration
+var nextDuration = time.Second
 
 func updateNextDuration(deltaThreads int) {
-	nextDuration = time.Minute*2 + time.Second*30
-	if deltaThreads > 15 {
-		nextDuration = time.Minute
+	tmp := nextDuration
+	switch {
+	case deltaThreads < 7:
+		tmp = time.Duration(float64(nextDuration) * 1.5)
+	case deltaThreads > 14:
+		tmp = time.Duration(float64(nextDuration) * 0.7)
 	}
+
+	nextDuration = durationThreshold(tmp)
+	log.Printf("update next duration. delta:%d next:%v", deltaThreads, nextDuration)
+}
+
+// 控制下次调度时间的阈值
+// 最小 30s 最多 8min
+func durationThreshold(d time.Duration) time.Duration {
+	return max(min(d, time.Minute*8), time.Second*30)
 }
 
 func SyncServer(cfg SyncServerConfig) {
