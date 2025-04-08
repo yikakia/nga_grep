@@ -46,6 +46,7 @@
 
     function fetchData(startDateUTC, endDateUTC) {
         const apiUrl = `https://nga_grep.yikakia.com/api/timeseries?startDate=${startDateUTC}&endDate=${endDateUTC}`;
+        // const apiUrl = `http://localhost:11648/api/timeseries?startDate=${startDateUTC}&endDate=${endDateUTC}`;
 
 
         fetch(apiUrl)
