@@ -15,18 +15,35 @@
     <h1 class="text-2xl font-bold mb-4">大时代景气指数(NGA:706)</h1>
 
     <div class="flex flex-wrap items-center gap-4 mb-4">
+
+        <div>
+            <label for="rangeSelect" class="block text-gray-700 text-sm font-bold mb-2">快速选择:</label>
+            <select id="rangeSelect"
+                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                <option value="2h">最近2小时</option>
+                <option value="8h">最近8小时</option>
+                <option value="24h">最近24小时</option>
+                <option value="3d">最近3天</option>
+                <option value="5d">最近5天</option>
+                <option value="7d">最近7天</option>
+            </select>
+        </div>
+
         <div>
             <label for="startDate" class="block text-gray-700 text-sm font-bold mb-2">开始时间范围:</label>
-            <input type="datetime-local" id="startDate" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+            <input type="datetime-local" id="startDate"
+                   class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
         </div>
         <div>
             <label for="endDate" class="block text-gray-700 text-sm font-bold mb-2">结束时间范围:</label>
-            <input type="datetime-local" id="endDate" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+            <input type="datetime-local" id="endDate"
+                   class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
         </div>
 
         <div>
             <label for="timeInterval" class="block text-gray-700 text-sm font-bold mb-2">时间间隔:</label>
-            <select id="timeInterval" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+            <select id="timeInterval"
+                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
                 <option value="5m">5 分钟</option>
                 <option value="15m">15 分钟</option>
                 <option value="30m">30 分钟</option>
@@ -38,7 +55,10 @@
         </div>
 
         <div>
-            <button id="fetchData" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">查询</button>
+            <button id="fetchData"
+                    class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+                查询
+            </button>
         </div>
     </div>
 
@@ -124,6 +144,53 @@
         const endDateInput = document.getElementById('endDate');
         const fetchDataButton = document.getElementById('fetchData');
         const timeIntervalSelect = document.getElementById('timeInterval');
+        const rangeSelect = document.getElementById('rangeSelect');
+
+        function setDateRange(range) {
+            const now = moment();
+            let start;
+
+            switch (range) {
+                case '2h':
+                    start = moment().subtract(2, 'hours');
+                    break;
+                case '8h':
+                    start = moment().subtract(8, 'hours');
+                    break;
+                case '24h':
+                    start = moment().subtract(24, 'hours');
+                    break;
+                case '3d':
+                    start = moment().subtract(3, 'days');
+                    break;
+                case '5d':
+                    start = moment().subtract(5, 'days');
+                    break;
+                case '7d':
+                    start = moment().subtract(7, 'days');
+                    break;
+                default:
+                    return; // Do nothing for custom
+            }
+
+            startDateInput.value = start.format('YYYY-MM-DDTHH:mm');
+            endDateInput.value = now.format('YYYY-MM-DDTHH:mm');
+        }
+
+
+        rangeSelect.addEventListener('change', () => {
+            setDateRange(rangeSelect.value);
+            // Trigger data fetch when a predefined range is selected
+            const startDateLocal = startDateInput.value;
+            const endDateLocal = endDateInput.value;
+            const timeInterval = timeIntervalSelect.value;
+
+            const startDateUTC = toUTC(startDateLocal);
+            const endDateUTC = toUTC(endDateLocal);
+
+            fetchData(startDateUTC, endDateUTC, timeInterval);
+        });
+
 
         // Set default date range to last 200 minutes
         const now = moment();

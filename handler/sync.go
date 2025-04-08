@@ -17,17 +17,26 @@ type SyncServerConfig struct {
 	Uid string
 	Url string
 	DB  string
+	// 贴子的下限阈值
+	ThresholdLow  int
+	ThresholdHigh int
+	// 下限阈值的倍数
+	ThresholdLowFactor float64
+	// 上限阈值的倍数
+	ThresholdHighFactor float64
 }
 
-var nextDuration = time.Second
+var nextDuration = time.Minute
 
-func updateNextDuration(deltaThreads int) {
+func updateNextDuration(deltaThreads int, cfg SyncServerConfig) {
 	tmp := nextDuration
 	switch {
-	case deltaThreads < 15:
-		tmp = time.Duration(float64(nextDuration) * 1.5)
-	case deltaThreads > 20:
-		tmp = time.Duration(float64(nextDuration) * 0.7)
+	case deltaThreads < cfg.ThresholdLow:
+		tmp = time.Duration(float64(nextDuration) * cfg.ThresholdLowFactor)
+		tmp -= time.Second
+	case deltaThreads > cfg.ThresholdHigh:
+		tmp = time.Duration(float64(nextDuration) * cfg.ThresholdHighFactor)
+		tmp += time.Second
 	}
 
 	nextDuration = durationThreshold(tmp)
@@ -50,13 +59,13 @@ func SyncServer(cfg SyncServerConfig) {
 	gen.SetDefault(client.NewDB(cfg.DB))
 
 	for {
-		sync(c)
+		sync(c, cfg)
 		time.Sleep(nextDuration)
 	}
 
 }
 
-func sync(c *nga.Client) {
+func sync(c *nga.Client, cfg SyncServerConfig) {
 	thread, err := c.Thread("706")
 	if err != nil {
 		log.Fatal(err)
@@ -119,7 +128,7 @@ func sync(c *nga.Client) {
 	}
 
 	log.Printf("sync success.time:%v delta:%d", time.Now(), delta)
-	updateNextDuration(deltaThread)
+	updateNextDuration(deltaThread, cfg)
 
 	return
 }
