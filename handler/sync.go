@@ -24,6 +24,8 @@ type SyncServerConfig struct {
 	ThresholdLowFactor float64
 	// 上限阈值的倍数
 	ThresholdHighFactor float64
+	LoopMin             time.Duration
+	LoopMax             time.Duration
 }
 
 var nextDuration = time.Minute
@@ -39,14 +41,14 @@ func updateNextDuration(deltaThreads int, cfg SyncServerConfig) {
 		tmp += time.Second
 	}
 
-	nextDuration = durationThreshold(tmp)
+	nextDuration = durationThreshold(tmp, cfg.LoopMin, cfg.LoopMax)
 	log.Printf("update next duration. delta:%d next:%v", deltaThreads, nextDuration)
 }
 
 // 控制下次调度时间的阈值
 // 最小 30s 最多 8min
-func durationThreshold(d time.Duration) time.Duration {
-	return max(min(d, time.Minute*8), time.Second*30)
+func durationThreshold(d, loopMin, loopMax time.Duration) time.Duration {
+	return max(min(d, loopMax), loopMin)
 }
 
 func SyncServer(cfg SyncServerConfig) {

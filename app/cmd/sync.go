@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"time"
+
 	"github.com/spf13/cobra"
 	"github.com/yikakia/nga_grep/handler"
 )
@@ -14,6 +16,8 @@ var (
 	thresholdHigh       int
 	thresholdLowFactor  float64
 	thresholdHighFactor float64
+	loopMin             time.Duration
+	loopMax             time.Duration
 )
 
 func init() {
@@ -25,6 +29,8 @@ func init() {
 	syncCmd.Flags().IntVar(&thresholdHigh, "th-h", 20, "上限阈值 高于这个值，下次调度时间会修改")
 	syncCmd.Flags().Float64Var(&thresholdLowFactor, "th-lf", 2, "低于下限阈值后，调度时间的倍数")
 	syncCmd.Flags().Float64Var(&thresholdHighFactor, "th-hf", 0.5, "高于上限阈值后，调度时间的倍数")
+	syncCmd.Flags().DurationVar(&loopMin, "loop-min", time.Second*30, "最小调度时间")
+	syncCmd.Flags().DurationVar(&loopMax, "loop-max", time.Minute*8, "最大调度时间")
 }
 
 var syncCmd = &cobra.Command{
@@ -40,6 +46,8 @@ var syncCmd = &cobra.Command{
 			ThresholdHigh:       thresholdHigh,
 			ThresholdLowFactor:  thresholdLowFactor,
 			ThresholdHighFactor: thresholdHighFactor,
+			LoopMin:             loopMin,
+			LoopMax:             loopMax,
 		})
 	},
 }
