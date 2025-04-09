@@ -1,0 +1,54 @@
+name: Build
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+  workflow_dispatch: # 允许手动触发 workflow
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        target:
+          - os: linux
+            arch: amd64
+            cc: gcc
+            ext: ""
+          - os: windows
+            arch: amd64
+            cc: x86_64-w64-mingw32-gcc
+            ext: ".exe"
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.24'
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc mingw-w64
+      - name: Build
+        env:
+          GOOS: ${{ matrix.target.os }}
+          GOARCH: ${{ matrix.target.arch }}
+          CC: ${{ matrix.target.cc }}
+          CGO_ENABLED: 1  # 禁用 CGO 以进行静态链接
+        run: |
+          echo "Building for $GOOS/$GOARCH with $CC"
+          output_name="nga_grep-${{ matrix.target.os }}-${{ matrix.target.arch }}${{ matrix.target.ext }}"
+          go build -v -ldflags="-s -w" -o "${output_name}" ./
+
+      - name: Upload binaries to release
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: nga_grep-${{ matrix.target.os }}-${{ matrix.target.arch }}${{ matrix.target.ext }}
+          tag: latest
+          overwrite: true
+          file_glob: true
+          release_name: "Latest Release"
+          body: "Automatically built binaries for different platforms."
