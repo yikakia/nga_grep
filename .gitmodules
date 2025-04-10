@@ -1,0 +1,3 @@
+[submodule "fe"]
+	path = fe
+	url = git@github.com:yikakia/nga_grep_front.git
