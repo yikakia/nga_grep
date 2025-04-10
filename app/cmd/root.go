@@ -20,4 +20,5 @@ func Execute() error {
 func init() {
 	rootCmd.AddCommand(runHttpServerCmd)
 	rootCmd.AddCommand(syncCmd)
+	rootCmd.AddCommand(migrateCmd)
 }

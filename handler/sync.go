@@ -17,15 +17,38 @@ type SyncServerConfig struct {
 	Uid string
 	Url string
 	DB  string
+	// 贴子的下限阈值
+	ThresholdLow  int
+	ThresholdHigh int
+	// 下限阈值的倍数
+	ThresholdLowFactor float64
+	// 上限阈值的倍数
+	ThresholdHighFactor float64
+	LoopMin             time.Duration
+	LoopMax             time.Duration
 }
 
-var nextDuration time.Duration
+var nextDuration = time.Minute
 
-func updateNextDuration(deltaThreads int) {
-	nextDuration = time.Minute*2 + time.Second*30
-	if deltaThreads > 15 {
-		nextDuration = time.Minute
+func updateNextDuration(deltaThreads int, cfg SyncServerConfig) {
+	tmp := nextDuration
+	switch {
+	case deltaThreads < cfg.ThresholdLow:
+		tmp = time.Duration(float64(nextDuration) * cfg.ThresholdLowFactor)
+		tmp -= time.Second
+	case deltaThreads > cfg.ThresholdHigh:
+		tmp = time.Duration(float64(nextDuration) * cfg.ThresholdHighFactor)
+		tmp += time.Second
 	}
+
+	nextDuration = durationThreshold(tmp, cfg.LoopMin, cfg.LoopMax)
+	log.Printf("update next duration. delta:%d next:%v", deltaThreads, nextDuration)
+}
+
+// 控制下次调度时间的阈值
+// 最小 30s 最多 8min
+func durationThreshold(d, loopMin, loopMax time.Duration) time.Duration {
+	return max(min(d, loopMax), loopMin)
 }
 
 func SyncServer(cfg SyncServerConfig) {
@@ -38,13 +61,13 @@ func SyncServer(cfg SyncServerConfig) {
 	gen.SetDefault(client.NewDB(cfg.DB))
 
 	for {
-		sync(c)
+		sync(c, cfg)
 		time.Sleep(nextDuration)
 	}
 
 }
 
-func sync(c *nga.Client) {
+func sync(c *nga.Client, cfg SyncServerConfig) {
 	thread, err := c.Thread("706")
 	if err != nil {
 		log.Fatal(err)
@@ -107,7 +130,7 @@ func sync(c *nga.Client) {
 	}
 
 	log.Printf("sync success.time:%v delta:%d", time.Now(), delta)
-	updateNextDuration(deltaThread)
+	updateNextDuration(deltaThread, cfg)
 
 	return
 }
