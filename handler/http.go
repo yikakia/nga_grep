@@ -9,6 +9,8 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/samber/lo"
+	"github.com/sourcegraph/conc/pool"
 	"github.com/yikakia/nga_grep/client"
 	"github.com/yikakia/nga_grep/model/gen"
 	"github.com/yikakia/nga_grep/pkg/data"
@@ -87,32 +89,118 @@ func timeSeries(c *gin.Context) {
 		}
 	}
 
-	dots, err := data.GetTimePointsData(start, end, duration)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-	resp := []timeseriesResp{}
-	for _, v := range dots {
-		resp = append(resp, timeseriesResp{
-			Timestamp: int64(v.Timestamp * 1000),
-			Value:     v.Count,
+	p := pool.New().WithErrors().WithMaxGoroutines(5)
+	var resp []timeseriesResp
+
+	p.Go(func() error {
+		dots, err := data.GetTimePointsData(start, end, duration)
+		if err != nil {
+			return err
+		}
+
+		for _, v := range dots {
+			resp = append(resp, timeseriesResp{
+				Timestamp: int64(v.Timestamp * 1000),
+				Value:     v.Count,
+			})
+		}
+
+		sort.Slice(resp, func(i, j int) bool {
+			return resp[i].Timestamp < resp[j].Timestamp
+		})
+		return nil
+	})
+
+	var apply applyFn
+	switch req.Indicator {
+	case indicatorMA5:
+		p.Go(func() error {
+			fn, err := buildMaApplyFn(start, end, duration, 5, func(resps []timeseriesResp, maValues []float64) {
+				for i := range resps {
+					resps[i].MA5 = maValues[i]
+				}
+			})
+			if err != nil {
+				return err
+			}
+			apply = fn
+			return nil
+		})
+	case indicatorMA10:
+		p.Go(func() error {
+			fn, err := buildMaApplyFn(start, end, duration, 10, func(resps []timeseriesResp, maValue []float64) {
+				for i := range resps {
+					resps[i].MA10 = maValue[i]
+				}
+			})
+			if err != nil {
+				return err
+			}
+			apply = fn
+			return nil
 		})
 	}
 
-	sort.Slice(resp, func(i, j int) bool {
-		return resp[i].Timestamp < resp[j].Timestamp
-	})
+	err = p.Wait()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+	}
+
+	if apply != nil {
+		apply(resp)
+
+	}
+
 	c.JSON(http.StatusOK, resp)
+}
+
+type applyFn func([]timeseriesResp)
+
+func buildMaApplyFn(start, end time.Time, duration time.Duration, n int, fn func(resps []timeseriesResp, maValues []float64)) (applyFn, error) {
+	maN, err := data.GetTimePointsData(start.Add(time.Duration(-n+1)*duration), end, duration)
+	if err != nil {
+		return nil, err
+	}
+	maNValues := getMA_N(maN, n)
+	return func(resp []timeseriesResp) {
+		fn(resp, maNValues)
+	}, nil
+}
+
+func getMA_N(dots []data.Dot, n int) []float64 {
+	var maNValues []float64
+	values := lo.Map(dots, func(item data.Dot, index int) int {
+		return item.Count
+	})
+	window := lo.Sum(values[:n-1])
+	for i, v := range values[n-1:] {
+		// i 是第n个
+		window += v
+		if i > 0 {
+			window -= values[i]
+		}
+
+		maNValues = append(maNValues, float64(window)/float64(n))
+	}
+	return maNValues
 }
 
 type timeseriesReq struct {
 	StartDate    string `form:"startDate"`
 	EndDate      string `form:"endDate"`
 	TimeInterval string `form:"timeInterval"`
+	Indicator    string `form:"indicator"` // 技术指标
 }
 
+const (
+	indicatorMA5  = "ma5"
+	indicatorMA10 = "ma10"
+	indicatorBOLL = "boll"
+)
+
 type timeseriesResp struct {
-	Timestamp int64 `json:"timestamp"` // 毫秒
-	Value     int   `json:"value"`
+	Timestamp int64   `json:"timestamp"` // 毫秒
+	Value     int     `json:"value"`
+	MA5       float64 `json:"ma5"`
+	MA10      float64 `json:"ma10"`
 }
