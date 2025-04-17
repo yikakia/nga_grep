@@ -5,6 +5,7 @@ go 1.23.4
 require (
 	github.com/gin-contrib/cors v1.7.5
 	github.com/gin-gonic/gin v1.10.0
+	github.com/pkg/errors v0.9.1
 	github.com/samber/lo v1.49.1
 	github.com/spf13/cobra v1.9.1
 	github.com/yikakia/nga v0.0.0-20250407135451-036ea23d79f8

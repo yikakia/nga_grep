@@ -9,10 +9,9 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	"github.com/samber/lo"
 	"github.com/yikakia/nga_grep/client"
-	"github.com/yikakia/nga_grep/model"
 	"github.com/yikakia/nga_grep/model/gen"
+	"github.com/yikakia/nga_grep/pkg/data"
 )
 
 type RunHttpServerConfig struct {
@@ -88,39 +87,22 @@ func timeSeries(c *gin.Context) {
 		}
 	}
 
-	tc := gen.Q.ThreadCount
-	find, err := tc.Where(tc.DateTime.Gte(start.Unix()), tc.DateTime.Lte(end.Unix())).Find()
+	dots, err := data.GetTimePointsData(start, end, duration)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	divByDuration := lo.GroupBy(find, func(item *model.ThreadCount) int64 {
-		return item.DateTime / int64(duration.Seconds()) // 每 duration 为一组
-	})
-
-	rMap := lo.MapValues(divByDuration, func(value []*model.ThreadCount, key int64) int {
-		return lo.SumBy(value, func(item *model.ThreadCount) int {
-			return item.Count
-		})
-	})
 	resp := []timeseriesResp{}
-
-	for cur := start; !cur.After(end); cur = cur.Add(duration) {
-		tmpTimestamp := cur.Unix() / int64(duration.Seconds())
-
-		tmpTime := time.Unix(tmpTimestamp*int64(duration.Seconds()), 0)
-		retTimeMilli := tmpTime.UnixMilli()
+	for _, v := range dots {
 		resp = append(resp, timeseriesResp{
-			Timestamp: retTimeMilli,
-			Value:     rMap[tmpTimestamp],
+			Timestamp: int64(v.Timestamp * 1000),
+			Value:     v.Count,
 		})
-
 	}
 
 	sort.Slice(resp, func(i, j int) bool {
 		return resp[i].Timestamp < resp[j].Timestamp
 	})
-
 	c.JSON(http.StatusOK, resp)
 }
 
