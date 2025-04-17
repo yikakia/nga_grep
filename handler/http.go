@@ -9,7 +9,6 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	"github.com/samber/lo"
 	"github.com/sourcegraph/conc/pool"
 	"github.com/yikakia/nga_grep/client"
 	"github.com/yikakia/nga_grep/model/gen"
@@ -112,9 +111,9 @@ func timeSeries(c *gin.Context) {
 	})
 
 	var apply applyFn
-	switch req.Indicator {
-	case indicatorMA5:
-		p.Go(func() error {
+	p.Go(func() error {
+		switch req.Indicator {
+		case indicatorMA5:
 			fn, err := buildMaApplyFn(start, end, duration, 5, func(resps []timeseriesResp, maValues []float64) {
 				for i := range resps {
 					resps[i].MA5 = maValues[i]
@@ -125,9 +124,7 @@ func timeSeries(c *gin.Context) {
 			}
 			apply = fn
 			return nil
-		})
-	case indicatorMA10:
-		p.Go(func() error {
+		case indicatorMA10:
 			fn, err := buildMaApplyFn(start, end, duration, 10, func(resps []timeseriesResp, maValue []float64) {
 				for i := range resps {
 					resps[i].MA10 = maValue[i]
@@ -138,8 +135,24 @@ func timeSeries(c *gin.Context) {
 			}
 			apply = fn
 			return nil
-		})
-	}
+		case indicatorBOLL:
+			fn, err := buildBollApplyFn(start, end, duration, 20, 2, func(resps []timeseriesResp, bollValues []data.BollingerBand) {
+				for i := range resps {
+					resps[i].Boll = BollingerBand{
+						Middle: bollValues[i].Middle,
+						Upper:  bollValues[i].Upper,
+						Lower:  bollValues[i].Lower,
+					}
+				}
+			})
+			if err != nil {
+				return err
+			}
+			apply = fn
+			return nil
+		}
+		return nil
+	})
 
 	err = p.Wait()
 	if err != nil {
@@ -161,28 +174,22 @@ func buildMaApplyFn(start, end time.Time, duration time.Duration, n int, fn func
 	if err != nil {
 		return nil, err
 	}
-	maNValues := getMA_N(maN, n)
+	maNValues := data.GetMA_N(maN, n)
 	return func(resp []timeseriesResp) {
 		fn(resp, maNValues)
 	}, nil
 }
 
-func getMA_N(dots []data.Dot, n int) []float64 {
-	var maNValues []float64
-	values := lo.Map(dots, func(item data.Dot, index int) int {
-		return item.Count
-	})
-	window := lo.Sum(values[:n-1])
-	for i, v := range values[n-1:] {
-		// i 是第n个
-		window += v
-		if i > 0 {
-			window -= values[i]
-		}
-
-		maNValues = append(maNValues, float64(window)/float64(n))
+func buildBollApplyFn(start, end time.Time, duration time.Duration, period int, multiplier float64, fn func(resps []timeseriesResp, bollValues []data.BollingerBand)) (applyFn, error) {
+	dots, err := data.GetTimePointsData(start.Add(time.Duration(-period+1)*duration), end, duration)
+	if err != nil {
+		return nil, err
 	}
-	return maNValues
+	bolls := data.CalculateBollingerBands(dots, period, multiplier)
+
+	return func(resp []timeseriesResp) {
+		fn(resp, bolls)
+	}, nil
 }
 
 type timeseriesReq struct {
@@ -199,8 +206,14 @@ const (
 )
 
 type timeseriesResp struct {
-	Timestamp int64   `json:"timestamp"` // 毫秒
-	Value     int     `json:"value"`
-	MA5       float64 `json:"ma5"`
-	MA10      float64 `json:"ma10"`
+	Timestamp int64         `json:"timestamp"` // 毫秒
+	Value     int           `json:"value"`
+	MA5       float64       `json:"ma5"`
+	MA10      float64       `json:"ma10"`
+	Boll      BollingerBand `json:"boll"`
+}
+type BollingerBand struct {
+	Middle float64 `json:"middle"`
+	Upper  float64 `json:"upper"`
+	Lower  float64 `json:"lower"`
 }
