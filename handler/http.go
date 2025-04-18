@@ -164,6 +164,10 @@ func timeSeries(c *gin.Context) {
 
 	}
 
+	// 在返回响应前设置缓存头
+	c.Header("Cache-Control", "public, max-age=3600") // 最多缓存1小时
+	c.Header("Expires", time.Now().Add(5*time.Minute).UTC().Format(http.TimeFormat))
+
 	c.JSON(http.StatusOK, resp)
 }
 
