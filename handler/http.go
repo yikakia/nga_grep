@@ -89,23 +89,23 @@ func timeSeries(c *gin.Context) {
 	}
 
 	p := pool.New().WithErrors().WithMaxGoroutines(5)
-	var resp []timeseriesResp
+	var dots []timeseriesDots
 
 	p.Go(func() error {
-		dots, err := data.GetTimePointsData(start, end, duration)
+		_dots, err := data.GetTimePointsData(start, end, duration)
 		if err != nil {
 			return err
 		}
 
-		for _, v := range dots {
-			resp = append(resp, timeseriesResp{
+		for _, v := range _dots {
+			dots = append(dots, timeseriesDots{
 				Timestamp: int64(v.Timestamp * 1000),
 				Value:     v.Count,
 			})
 		}
 
-		sort.Slice(resp, func(i, j int) bool {
-			return resp[i].Timestamp < resp[j].Timestamp
+		sort.Slice(dots, func(i, j int) bool {
+			return dots[i].Timestamp < dots[j].Timestamp
 		})
 		return nil
 	})
@@ -114,7 +114,7 @@ func timeSeries(c *gin.Context) {
 	p.Go(func() error {
 		switch req.Indicator {
 		case indicatorMA5:
-			fn, err := buildMaApplyFn(start, end, duration, 5, func(resps []timeseriesResp, maValues []float64) {
+			fn, err := buildMaApplyFn(start, end, duration, 5, func(resps []timeseriesDots, maValues []float64) {
 				for i := range resps {
 					resps[i].MA5 = maValues[i]
 				}
@@ -125,7 +125,7 @@ func timeSeries(c *gin.Context) {
 			apply = fn
 			return nil
 		case indicatorMA10:
-			fn, err := buildMaApplyFn(start, end, duration, 10, func(resps []timeseriesResp, maValue []float64) {
+			fn, err := buildMaApplyFn(start, end, duration, 10, func(resps []timeseriesDots, maValue []float64) {
 				for i := range resps {
 					resps[i].MA10 = maValue[i]
 				}
@@ -136,7 +136,7 @@ func timeSeries(c *gin.Context) {
 			apply = fn
 			return nil
 		case indicatorBOLL:
-			fn, err := buildBollApplyFn(start, end, duration, 20, 2, func(resps []timeseriesResp, bollValues []data.BollingerBand) {
+			fn, err := buildBollApplyFn(start, end, duration, 20, 2, func(resps []timeseriesDots, bollValues []data.BollingerBand) {
 				for i := range resps {
 					resps[i].Boll = BollingerBand{
 						Middle: bollValues[i].Middle,
@@ -160,38 +160,38 @@ func timeSeries(c *gin.Context) {
 	}
 
 	if apply != nil {
-		apply(resp)
+		apply(dots)
 
 	}
 
 	// 在返回响应前设置缓存头
-	c.Header("Cache-Control", "public, max-age=3600") // 最多缓存1小时
-	c.Header("Expires", time.Now().Add(5*time.Minute).UTC().Format(http.TimeFormat))
+	c.Header("Cache-Control", "public, max-age=300") // 最多缓存5分钟
+	//c.Header("Expires", time.Now().Add(5*time.Minute).UTC().Format(http.TimeFormat))
 
-	c.JSON(http.StatusOK, resp)
+	c.JSON(http.StatusOK, timeSeriesResp{Data: dots})
 }
 
-type applyFn func([]timeseriesResp)
+type applyFn func([]timeseriesDots)
 
-func buildMaApplyFn(start, end time.Time, duration time.Duration, n int, fn func(resps []timeseriesResp, maValues []float64)) (applyFn, error) {
+func buildMaApplyFn(start, end time.Time, duration time.Duration, n int, fn func(resps []timeseriesDots, maValues []float64)) (applyFn, error) {
 	maN, err := data.GetTimePointsData(start.Add(time.Duration(-n+1)*duration), end, duration)
 	if err != nil {
 		return nil, err
 	}
 	maNValues := data.GetMA_N(maN, n)
-	return func(resp []timeseriesResp) {
+	return func(resp []timeseriesDots) {
 		fn(resp, maNValues)
 	}, nil
 }
 
-func buildBollApplyFn(start, end time.Time, duration time.Duration, period int, multiplier float64, fn func(resps []timeseriesResp, bollValues []data.BollingerBand)) (applyFn, error) {
+func buildBollApplyFn(start, end time.Time, duration time.Duration, period int, multiplier float64, fn func(resps []timeseriesDots, bollValues []data.BollingerBand)) (applyFn, error) {
 	dots, err := data.GetTimePointsData(start.Add(time.Duration(-period+1)*duration), end, duration)
 	if err != nil {
 		return nil, err
 	}
 	bolls := data.CalculateBollingerBands(dots, period, multiplier)
 
-	return func(resp []timeseriesResp) {
+	return func(resp []timeseriesDots) {
 		fn(resp, bolls)
 	}, nil
 }
@@ -209,7 +209,11 @@ const (
 	indicatorBOLL = "boll"
 )
 
-type timeseriesResp struct {
+type timeSeriesResp struct {
+	Data []timeseriesDots `json:"data"`
+}
+
+type timeseriesDots struct {
 	Timestamp int64         `json:"timestamp"` // 毫秒
 	Value     int           `json:"value"`
 	MA5       float64       `json:"ma5"`
