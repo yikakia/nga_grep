@@ -13,19 +13,28 @@ type Cache[T any] struct {
 	getter Getter[T]
 	name   KeyName
 	*cache.Cache
+	expirationFn func(map[string]any) time.Duration
 }
 
 type Getter[T any] func(args map[string]any) (T, error)
 type KeyName func(args map[string]any) (string, error)
 
-func NewCache[T any](getter Getter[T], name KeyName) *Cache[T] {
-	return &Cache[T]{
+func NewCache[T any](getter Getter[T], name KeyName, opts ...Option[T]) *Cache[T] {
+	c := &Cache[T]{
 		Group:  &singleflight.Group{},
 		getter: getter,
 		name:   name,
-		Cache:  cache.New(time.Minute, time.Minute*5),
+		Cache:  cache.New(time.Hour, 2*time.Hour),
 	}
+
+	for _, opt := range opts {
+		opt(c)
+	}
+
+	return c
 }
+
+type Option[T any] func(*Cache[T]) error
 
 func (c *Cache[T]) Get(args map[string]any) (T, error) {
 	key, err := c.name(args)

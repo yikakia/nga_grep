@@ -30,9 +30,27 @@ var getDotCache = sync.OnceValue(func() *cache.Cache[int] {
 			duration := args["duration"].(time.Duration)
 			k := fmt.Sprintf("t:%v_d:%v", t, duration)
 			return k, nil
-		})
+		},
+		cache.WithExpiration[int](func(args map[string]any) time.Duration {
+			t := args["t"].(time.Time)
+			duration := args["duration"].(time.Duration)
+
+			nowDuration := truncateToDuration(time.Now(), duration)
+			tDuration := truncateToDuration(t, duration)
+			// 如果是最近一个时间片，则过期时间为 1min
+			if nowDuration == tDuration {
+				return time.Minute
+			}
+
+			return 0
+		}))
 
 })
+
+// 给定一个时间点，以及时间间隔，返回这个时间点所属时间片的时间戳
+func truncateToDuration(t time.Time, duration time.Duration) int64 {
+	return (t.Unix() / int64(duration.Seconds())) * int64(duration.Seconds())
+}
 
 // 给定一个时间点，以及时间间隔，返回这个时间点所属时间片内的发帖量
 // 比如给 2025-04-14 11:33:44 5m, 返回 2025-04-14 11:30:00 到 2025-04-14 11:35:00 内的发帖量 左闭右开
@@ -40,8 +58,8 @@ var getDotCache = sync.OnceValue(func() *cache.Cache[int] {
 func getTimePointData(t time.Time, duration time.Duration) (int, error) {
 	var posts int
 
-	start := (t.Unix() / int64(duration.Seconds())) * int64(duration.Seconds())
-	end := (t.Add(duration).Unix() / int64(duration.Seconds())) * int64(duration.Seconds())
+	start := truncateToDuration(t, duration)
+	end := truncateToDuration(t.Add(duration), duration)
 
 	tc := gen.Q.ThreadCount
 
