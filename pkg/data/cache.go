@@ -3,49 +3,27 @@
 package data
 
 import (
+	"context"
 	"fmt"
-	"sync"
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/yikakia/cachalot/core/cache"
 	"github.com/yikakia/nga_grep/model/gen"
-	"github.com/yikakia/nga_grep/pkg/data/cache"
 )
 
-var getDotCache = sync.OnceValue(func() *cache.Cache[int] {
-	return cache.NewCache(
-		func(args map[string]any) (int, error) {
-			t := args["t"].(time.Time)
-			duration := args["duration"].(time.Duration)
+func getTimePointDataWithCache(t time.Time, duration time.Duration) (int, error) {
+	get, err := cachalotCache().Get(context.Background(),
+		fmt.Sprintf("t:%v_d:%v", t, duration),
+		cache.WithOptionCustomField("t", t),
+		cache.WithOptionCustomField("duration", duration),
+	)
+	if err != nil {
+		return 0, err
+	}
 
-			data, err := getTimePointData(t, duration)
-			if err != nil {
-				return 0, err
-			}
-
-			return data, nil
-		},
-		func(args map[string]any) (string, error) {
-			t := args["t"].(time.Time)
-			duration := args["duration"].(time.Duration)
-			k := fmt.Sprintf("t:%v_d:%v", t, duration)
-			return k, nil
-		},
-		cache.WithExpiration[int](func(args map[string]any) time.Duration {
-			t := args["t"].(time.Time)
-			duration := args["duration"].(time.Duration)
-
-			nowDuration := truncateToDuration(time.Now(), duration)
-			tDuration := truncateToDuration(t, duration)
-			// 如果是最近一个时间片，则过期时间为 1min
-			if nowDuration == tDuration {
-				return time.Minute
-			}
-
-			return 0
-		}))
-
-})
+	return get, nil
+}
 
 // 给定一个时间点，以及时间间隔，返回这个时间点所属时间片的时间戳
 func truncateToDuration(t time.Time, duration time.Duration) int64 {
@@ -72,16 +50,4 @@ func getTimePointData(t time.Time, duration time.Duration) (int, error) {
 	}
 
 	return posts, nil
-}
-
-func getTimePointDataWithCache(t time.Time, duration time.Duration) (int, error) {
-	v, err := getDotCache().Get(map[string]any{
-		"t":        t,
-		"duration": duration,
-	})
-	if err != nil {
-		return 0, err
-	}
-
-	return v, nil
 }
