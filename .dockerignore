@@ -1,0 +1,15 @@
+# VCS
+.git
+.gitignore
+
+# OS files
+.DS_Store
+
+# Go build artifacts
+bin/
+build/
+dist/
+
+# IDE
+.vscode/
+.idea/
