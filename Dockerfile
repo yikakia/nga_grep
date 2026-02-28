@@ -26,8 +26,12 @@ COPY --from=builder /nga_grep /nga_grep
 RUN chmod +x /nga_grep
 
 # install root CAs for outbound HTTPS requests
+# 设置时区为北京时间（UTC+8）
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends ca-certificates \
+    && apt-get install -y --no-install-recommends ca-certificates tzdata \
+    && ln -snf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime \
+    && echo "Asia/Shanghai" > /etc/timezone \
+    && dpkg-reconfigure -f noninteractive tzdata \
     && rm -rf /var/lib/apt/lists/*
 
 # default entrypoint just lists help
