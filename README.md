@@ -3,6 +3,9 @@
 nga_grep sync --cid="" --uid="" --db="./nga.db" 
 # api
 nga_grep api-server --cors=localhost,dashidai.yikakia.com --port=";11648" --db="./nga.db"
+
+# 初始化 db
+nga_grep migrate --db="./nga.db"
 ```
 
 用 git submodule 嵌入了前端的项目，之后可以考虑一起发布
@@ -36,9 +39,13 @@ touch data/nga.db     # 或拷贝已有文件
 ```
 2. **构建镜像**
 ```sh
+# db 采用挂载的形式 由变量 NGA_DATA_DIR 决定
+# export NGA_DATA_DIR=./data/
 docker-compose build
 ```
+
 3. **启动全部服务**
+
 ```sh
 docker-compose up -d
 ```
