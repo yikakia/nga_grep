@@ -25,5 +25,10 @@ COPY --from=builder /nga_grep /nga_grep
 # make binary executable
 RUN chmod +x /nga_grep
 
+# install root CAs for outbound HTTPS requests
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
 # default entrypoint just lists help
 ENTRYPOINT ["/nga_grep"]
