@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  sync:
+    build: .
+    image: nga_grep:latest
+    command: ["/nga_grep", "sync", "--db=/data/nga.db", "--loop-max=4m50s", "--loop-min=30s", "--th-lf=1.3"]
+    volumes:
+      - ./data:/data
+    restart: unless-stopped
+
+  api:
+    build: .
+    image: nga_grep:latest
+    command: ["/nga_grep", "api-server", "--db=/data/nga.db", "--cors=localhost,dashidai.yikakia.com,nga-grep-front.pages.dev", "--port=:11648"]
+    ports:
+      - '11648:11648'
+    volumes:
+      - ./data:/data
+    restart: unless-stopped
