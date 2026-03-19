@@ -7,4 +7,5 @@
 out
 
 *.exe
-nga.db
+data/nga.db
+.env

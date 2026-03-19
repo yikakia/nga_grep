@@ -25,7 +25,7 @@ services:
       - --cors=localhost,dashidai.yikakia.com,nga-grep-front.pages.dev
       - --port=:11648
     ports:
-      - "11648:11648"
+      - "127.0.0.1:11648:11648"
     volumes:
       - type: bind
         source: ${NGA_DATA_DIR?Please set NGA_DATA_DIR to a host directory that contains nga.db}
