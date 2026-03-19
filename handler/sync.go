@@ -7,7 +7,6 @@ import (
 
 	"github.com/samber/lo"
 	"github.com/yikakia/nga"
-	"github.com/yikakia/nga_grep/client"
 	"github.com/yikakia/nga_grep/model"
 	"github.com/yikakia/nga_grep/model/gen"
 )
@@ -58,16 +57,16 @@ func SyncServer(cfg SyncServerConfig) {
 		NgaPassportCid: cfg.Cid,
 	})
 
-	gen.SetDefault(client.NewDB(cfg.DB))
+	initDefaultDB(cfg.DB)
 
 	for {
-		sync(c, cfg)
+		syncOnce(c, cfg)
 		time.Sleep(nextDuration)
 	}
 
 }
 
-func sync(c *nga.Client, cfg SyncServerConfig) {
+func syncOnce(c *nga.Client, cfg SyncServerConfig) {
 	thread, err := c.Thread("706")
 	if err != nil {
 		log.Fatal(err)

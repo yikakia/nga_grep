@@ -10,8 +10,6 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/sourcegraph/conc/pool"
-	"github.com/yikakia/nga_grep/client"
-	"github.com/yikakia/nga_grep/model/gen"
 	"github.com/yikakia/nga_grep/pkg/data"
 )
 
@@ -22,7 +20,7 @@ type RunHttpServerConfig struct {
 }
 
 func RunHttpServer(cfg RunHttpServerConfig) {
-	gen.SetDefault(client.NewDB(cfg.DB))
+	initDefaultDB(cfg.DB)
 
 	r := gin.Default()
 	config := cors.Config{

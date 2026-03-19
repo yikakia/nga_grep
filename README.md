@@ -1,11 +1,15 @@
 ```shell
-# sync 
-nga_grep sync --cid="" --uid="" --db="./nga.db" 
-# api
-nga_grep api-server --cors=localhost,dashidai.yikakia.com --port=";11648" --db="./nga.db"
-
 # 初始化 db
 nga_grep migrate --db="./nga.db"
+
+# 仅运行同步爬取（兼容旧入口，内部等价于 api-server --mode=sync）
+nga_grep sync --cid="" --uid="" --db="./nga.db"
+
+# 仅运行 HTTP API（默认模式 http）
+nga_grep api-server --db="./nga.db" --cors=localhost,dashidai.yikakia.com --port=":11648"
+
+# 同时运行 HTTP API + 同步爬取
+nga_grep api-server --db="./nga.db" --mode=http,sync --cid="" --uid=""
 ```
 
 用 git submodule 嵌入了前端的项目，之后可以考虑一起发布
