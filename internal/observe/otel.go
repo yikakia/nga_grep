@@ -83,7 +83,7 @@ var _initLogger = sync.OnceValues(func() (*log.LoggerProvider, error) {
 	provider := log.NewLoggerProvider(log.WithProcessor(processor))
 	global.SetLoggerProvider(provider)
 
-	otelSlogHandler := otelslog.NewHandler("nga", otelslog.WithLoggerProvider(provider))
+	otelSlogHandler := otelslog.NewHandler("nga", otelslog.WithLoggerProvider(provider), otelslog.WithSource(true))
 
 	final := slog.NewMultiHandler(otelSlogHandler, slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
 		AddSource: true,
