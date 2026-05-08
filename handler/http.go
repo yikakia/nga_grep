@@ -14,6 +14,7 @@ import (
 	"github.com/sourcegraph/conc/pool"
 	"github.com/yikakia/nga_grep/internal/observe"
 	"github.com/yikakia/nga_grep/pkg/data"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 )
 
 type RunHttpServerConfig struct {
@@ -59,12 +60,18 @@ func newGinEngine(cfg RunHttpServerConfig) (*gin.Engine, error) {
 		MaxAge: 12 * time.Hour, // 预检请求的缓存时间
 	}
 
-	r.Use(cors.New(config), gin.Logger(), observe.OTelAccessLogMiddleware(), gin.Recovery())
+	middlewares := []gin.HandlerFunc{cors.New(config)}
 
-	err := observe.GinMiddleware(r)
+	err := observe.InitAll()
 	if err != nil {
 		panic(err)
 	}
+
+	middlewares = append(middlewares, otelgin.Middleware("nga"))
+
+	middlewares = append(middlewares, gin.Logger(), observe.OTelAccessLogMiddleware(), gin.Recovery())
+
+	r.Use(middlewares...)
 
 	return r, nil
 }
