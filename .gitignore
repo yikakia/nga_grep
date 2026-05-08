@@ -9,3 +9,6 @@ out
 *.exe
 data/nga.db
 .env
+
+.api.env
+.sync.env

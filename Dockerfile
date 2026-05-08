@@ -17,13 +17,6 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 
 # final stage
 FROM debian:bookworm-slim
-# create work dir for runtime
-WORKDIR /data
-# copy binary
-COPY --from=builder /nga_grep /nga_grep
-
-# make binary executable
-RUN chmod +x /nga_grep
 
 # install root CAs for outbound HTTPS requests
 # 设置时区为北京时间（UTC+8）
@@ -33,6 +26,14 @@ RUN apt-get update \
     && echo "Asia/Shanghai" > /etc/timezone \
     && dpkg-reconfigure -f noninteractive tzdata \
     && rm -rf /var/lib/apt/lists/*
+
+# create work dir for runtime
+WORKDIR /data
+# copy binary
+COPY --from=builder /nga_grep /nga_grep
+
+# make binary executable
+RUN chmod +x /nga_grep
 
 # default entrypoint just lists help
 ENTRYPOINT ["/nga_grep"]

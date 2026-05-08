@@ -1,7 +1,9 @@
 package handler
 
 import (
+	"fmt"
 	"log"
+	"log/slog"
 	"net/http"
 	"sort"
 	"strings"
@@ -10,6 +12,7 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/sourcegraph/conc/pool"
+	"github.com/yikakia/nga_grep/internal/observe"
 	"github.com/yikakia/nga_grep/pkg/data"
 )
 
@@ -22,7 +25,22 @@ type RunHttpServerConfig struct {
 func RunHttpServer(cfg RunHttpServerConfig) {
 	initDefaultDB(cfg.DB)
 
-	r := gin.Default()
+	r, err := newGinEngine(cfg)
+	if err != nil {
+		panic(err)
+	}
+
+	// 监听 /my-path 路径
+	r.GET("/api/timeseries", timeSeries)
+	err = r.Run(cfg.Port)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func newGinEngine(cfg RunHttpServerConfig) (*gin.Engine, error) {
+	r := gin.New()
+
 	config := cors.Config{
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD"}, // 允许的方法
 		AllowHeaders:     []string{"Origin", "Content-Length", "Content-Type"},      // 允许的头
@@ -35,20 +53,20 @@ func RunHttpServer(cfg RunHttpServerConfig) {
 				}
 				log.Print(origin)
 			}
-			log.Printf("hit cors")
+			slog.Warn("hit cors")
 			return false
 		},
 		MaxAge: 12 * time.Hour, // 预检请求的缓存时间
 	}
 
-	r.Use(cors.New(config))
+	r.Use(cors.New(config), gin.Logger(), observe.OTelAccessLogMiddleware(), gin.Recovery())
 
-	// 监听 /my-path 路径
-	r.GET("/api/timeseries", timeSeries)
-	err := r.Run(cfg.Port)
+	err := observe.GinMiddleware(r)
 	if err != nil {
 		panic(err)
 	}
+
+	return r, nil
 }
 
 func timeSeries(c *gin.Context) {
@@ -56,8 +74,11 @@ func timeSeries(c *gin.Context) {
 	err := c.ShouldBindQuery(&req)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		slog.WarnContext(c.Request.Context(), "warn bind query failed.")
 		return
 	}
+
+	slog.InfoContext(c.Request.Context(), "bind succ", "req", fmt.Sprint(req))
 
 	start := time.Now().AddDate(0, 0, -1)
 	end := time.Now()

@@ -2,11 +2,12 @@ package handler
 
 import (
 	"fmt"
-	"log"
+	"log/slog"
 	"time"
 
 	"github.com/samber/lo"
 	"github.com/yikakia/nga"
+	"github.com/yikakia/nga_grep/internal/observe"
 	"github.com/yikakia/nga_grep/model"
 	"github.com/yikakia/nga_grep/model/gen"
 )
@@ -41,7 +42,7 @@ func updateNextDuration(deltaThreads int, cfg SyncServerConfig) {
 	}
 
 	nextDuration = durationThreshold(tmp, cfg.LoopMin, cfg.LoopMax)
-	log.Printf("update next duration. delta:%d next:%v", deltaThreads, nextDuration)
+	slog.Info("update next duration", slog.Int("deltaThreads", deltaThreads), slog.Duration("next", nextDuration))
 }
 
 // 控制下次调度时间的阈值
@@ -58,6 +59,7 @@ func SyncServer(cfg SyncServerConfig) {
 	})
 
 	initDefaultDB(cfg.DB)
+	observe.InitAll()
 
 	for {
 		syncOnce(c, cfg)
@@ -69,7 +71,8 @@ func SyncServer(cfg SyncServerConfig) {
 func syncOnce(c *nga.Client, cfg SyncServerConfig) {
 	thread, err := c.Thread("706")
 	if err != nil {
-		log.Fatal(err)
+		slog.Error("query failed.", "err", err.Error())
+		panic(err)
 	}
 
 	var ts []*model.ThreadLatestData
@@ -89,8 +92,8 @@ func syncOnce(c *nga.Client, cfg SyncServerConfig) {
 
 	find, err := tld.Where(tld.TID.In(tids...)).Find()
 	if err != nil {
-		log.Fatal("sync failed. err:", err)
-		return
+		slog.Error("find from db failed.", "err", err.Error())
+		panic(err)
 	}
 
 	findMap := lo.SliceToMap(find, func(item *model.ThreadLatestData) (int, *model.ThreadLatestData) {
@@ -125,10 +128,11 @@ func syncOnce(c *nga.Client, cfg SyncServerConfig) {
 		return nil
 	})
 	if err != nil {
-		log.Fatal("update failed. err:", err)
+		slog.Error("update failed.", "err", err.Error())
+		panic(err)
 	}
 
-	log.Printf("sync success.time:%v delta:%d", time.Now(), delta)
+	slog.Info("sync success", "delta", delta)
 	updateNextDuration(deltaThread, cfg)
 
 	return

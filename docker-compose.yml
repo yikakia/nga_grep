@@ -11,6 +11,11 @@ services:
       - --loop-max=4m50s
       - --loop-min=30s
       - --th-lf=1.3
+    env_file:
+      - .env
+      - .sync.env
+#    environment:
+#      OTEL_RESOURCE_ATTRIBUTES: "service.namespace=sync,deployment.environment=production"
     volumes:
       - type: bind
         source: ${NGA_DATA_DIR?Please set NGA_DATA_DIR to a host directory that contains nga.db}
@@ -28,6 +33,11 @@ services:
       # - --mode=http,sync
     ports:
       - "127.0.0.1:11648:11648"
+    env_file:
+      - .env
+      - .api.env
+#    environment:
+#      OTEL_RESOURCE_ATTRIBUTES: "service.namespace=api,deployment.environment=production"
     volumes:
       - type: bind
         source: ${NGA_DATA_DIR?Please set NGA_DATA_DIR to a host directory that contains nga.db}

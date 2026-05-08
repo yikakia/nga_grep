@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -18,7 +17,7 @@ var (
 	dbPath string
 
 	// api-server mode
-	mode string
+	modes []string
 
 	// sync
 	cid                 string
@@ -39,7 +38,7 @@ func init() {
 
 	// common
 	runHttpServerCmd.Flags().StringVar(&dbPath, "db", "", "db 路径")
-	runHttpServerCmd.Flags().StringVar(&mode, "mode", "http", "启动模式，逗号分隔：http,sync")
+	runHttpServerCmd.Flags().StringSliceVar(&modes, "mode", []string{"http"}, "启动模式，可多次传入或逗号分隔：http,sync")
 
 	// sync flags (used when --mode contains sync)
 	addSyncFlags(runHttpServerCmd)
@@ -54,18 +53,12 @@ type apiServerModes struct {
 	Sync bool
 }
 
-func parseApiServerModes(s string) (apiServerModes, error) {
-	s = strings.TrimSpace(s)
-	if s == "" {
+func parseApiServerModes(values []string) (apiServerModes, error) {
+	if len(values) == 0 {
 		return apiServerModes{}, fmt.Errorf("--mode 不能为空，可选：http,sync（逗号分隔）")
 	}
-
 	var m apiServerModes
-	for _, part := range strings.Split(s, ",") {
-		part = strings.TrimSpace(part)
-		if part == "" {
-			continue
-		}
+	for _, part := range values {
 		switch part {
 		case "http":
 			m.HTTP = true
@@ -133,11 +126,11 @@ var runHttpServerCmd = &cobra.Command{
 	Use:   "api-server",
 	Short: "启动服务（HTTP API / 同步爬取）",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		modes, err := parseApiServerModes(mode)
+		parsedModes, err := parseApiServerModes(modes)
 		if err != nil {
 			return err
 		}
-		runApiServerWithModes(modes)
+		runApiServerWithModes(parsedModes)
 		return nil
 	},
 }
