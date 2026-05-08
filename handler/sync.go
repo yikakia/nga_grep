@@ -14,6 +14,7 @@ import (
 	"github.com/yikakia/nga_grep/model/gen"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/metric"
+	"go.opentelemetry.io/otel/trace"
 )
 
 var syncMeter = sync.OnceValue(func() metric.Meter {
@@ -55,7 +56,7 @@ type SyncServerConfig struct {
 
 var nextDuration = time.Minute
 
-func updateNextDuration(deltaThreads int, cfg SyncServerConfig) {
+func updateNextDuration(ctx context.Context, deltaThreads int, cfg SyncServerConfig) {
 	tmp := nextDuration
 	switch {
 	case deltaThreads < cfg.ThresholdLow:
@@ -67,7 +68,7 @@ func updateNextDuration(deltaThreads int, cfg SyncServerConfig) {
 	}
 
 	nextDuration = durationThreshold(tmp, cfg.LoopMin, cfg.LoopMax)
-	slog.Info("update next duration", slog.Int("deltaThreads", deltaThreads), slog.Duration("next", nextDuration))
+	slog.InfoContext(ctx, "update next duration", slog.Int("deltaThreads", deltaThreads), slog.Duration("next", nextDuration))
 }
 
 // 控制下次调度时间的阈值
@@ -94,9 +95,14 @@ func SyncServer(cfg SyncServerConfig) {
 }
 
 func syncOnce(c *nga.Client, cfg SyncServerConfig) {
+	ctx := context.Background()
+
+	ctx, span := tracer().Start(ctx, "sync")
+	defer span.End()
+
 	thread, err := c.Thread("706")
 	if err != nil {
-		slog.Error("query failed.", "err", err.Error())
+		slog.ErrorContext(ctx, "query failed.", "err", err.Error())
 		panic(err)
 	}
 
@@ -117,7 +123,7 @@ func syncOnce(c *nga.Client, cfg SyncServerConfig) {
 
 	find, err := tld.Where(tld.TID.In(tids...)).Find()
 	if err != nil {
-		slog.Error("find from db failed.", "err", err.Error())
+		slog.ErrorContext(ctx, "find from db failed.", "err", err.Error())
 		panic(err)
 	}
 
@@ -153,14 +159,18 @@ func syncOnce(c *nga.Client, cfg SyncServerConfig) {
 		return nil
 	})
 	if err != nil {
-		slog.Error("update failed.", "err", err.Error())
+		slog.ErrorContext(ctx, "update failed.", "err", err.Error())
 		panic(err)
 	}
 
 	recordSyncResult(delta, deltaThread)
 
-	slog.Info("sync success", "delta", delta)
-	updateNextDuration(deltaThread, cfg)
+	slog.InfoContext(ctx, "sync success", "delta", delta)
+	updateNextDuration(ctx, deltaThread, cfg)
 
 	return
 }
+
+var tracer = sync.OnceValue(func() trace.Tracer {
+	return otel.Tracer("")
+})
