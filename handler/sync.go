@@ -1,8 +1,10 @@
 package handler
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
+	"sync"
 	"time"
 
 	"github.com/samber/lo"
@@ -10,7 +12,30 @@ import (
 	"github.com/yikakia/nga_grep/internal/observe"
 	"github.com/yikakia/nga_grep/model"
 	"github.com/yikakia/nga_grep/model/gen"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/metric"
 )
+
+var syncMeter = sync.OnceValue(func() metric.Meter {
+	return otel.Meter("sync")
+})
+
+var syncResultCounter = sync.OnceValues(func() (metric.Int64Counter, error) {
+	return syncMeter().Int64Counter("sync_result_delta")
+})
+
+var syncResultThreadCounter = sync.OnceValues(func() (metric.Int64Counter, error) {
+	return syncMeter().Int64Counter("sync_result_delta_thread")
+})
+
+func recordSyncResult(delta, deltaThreads int) {
+	if counter, err := syncResultCounter(); err == nil {
+		counter.Add(context.Background(), int64(delta))
+	}
+	if counter, err := syncResultThreadCounter(); err == nil {
+		counter.Add(context.Background(), int64(deltaThreads))
+	}
+}
 
 type SyncServerConfig struct {
 	Cid string
@@ -131,6 +156,8 @@ func syncOnce(c *nga.Client, cfg SyncServerConfig) {
 		slog.Error("update failed.", "err", err.Error())
 		panic(err)
 	}
+
+	recordSyncResult(delta, deltaThread)
 
 	slog.Info("sync success", "delta", delta)
 	updateNextDuration(deltaThread, cfg)

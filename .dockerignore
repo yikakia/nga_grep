@@ -13,3 +13,7 @@ dist/
 # IDE
 .vscode/
 .idea/
+
+data/
+
+*.exe
