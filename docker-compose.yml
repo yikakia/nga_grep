@@ -3,7 +3,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: nga_grep:latest
+    image: ghcr.io/yikakia/nga_grep:latest
     restart: unless-stopped
     command:
       - sync
@@ -22,7 +22,7 @@ services:
         target: /data
 
   api:
-    image: nga_grep:latest
+    image: ghcr.io/yikakia/nga_grep:latest
     restart: unless-stopped
     command:
       - api-server
