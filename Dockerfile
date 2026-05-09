@@ -1,7 +1,7 @@
 # multi-stage build for nga_grep
 
 # builder stage
-FROM golang:1.26-bookworm AS builder
+FROM golang:1.26-trixie AS builder
 WORKDIR /src
 
 # 使用 build cache
@@ -16,7 +16,7 @@ RUN --mount=type=cache,target=/go/pkg/mod \
     GOOS=linux GOARCH=amd64 go build -o /nga_grep ./main.go
 
 # final stage
-FROM debian:bookworm-slim
+FROM debian:trixie-slim
 
 # install root CAs for outbound HTTPS requests
 # 设置时区为北京时间（UTC+8）
