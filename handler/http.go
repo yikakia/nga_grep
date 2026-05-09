@@ -33,6 +33,8 @@ func RunHttpServer(cfg RunHttpServerConfig) {
 
 	// 监听 /my-path 路径
 	r.GET("/api/timeseries", timeSeries)
+
+	slog.Info("apiserver start...")
 	err = r.Run(cfg.Port)
 	if err != nil {
 		panic(err)
