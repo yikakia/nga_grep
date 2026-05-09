@@ -54,6 +54,9 @@ docker build . -t ghcr.io/yikakia/nga_grep
 3. **启动全部服务**
 
 ```sh
+# 拉最新镜像 需要更新时执行
+docker compose pull
+# 重启容器
 docker compose up -d
 ```
 
