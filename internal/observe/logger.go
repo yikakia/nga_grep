@@ -22,7 +22,8 @@ var _initLogger = sync.OnceValues(func() (*log.LoggerProvider, error) {
 	provider := log.NewLoggerProvider(log.WithProcessor(processor))
 	global.SetLoggerProvider(provider)
 
-	otelSlogHandler := otelslog.NewHandler("nga", otelslog.WithLoggerProvider(provider), otelslog.WithSource(true))
+	// 这里的name是 scope name
+	otelSlogHandler := otelslog.NewHandler("", otelslog.WithLoggerProvider(provider), otelslog.WithSource(true))
 
 	final := slog.NewMultiHandler(otelSlogHandler, slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
 		AddSource: true,

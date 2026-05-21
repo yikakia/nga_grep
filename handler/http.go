@@ -69,7 +69,7 @@ func newGinEngine(cfg RunHttpServerConfig) (*gin.Engine, error) {
 		panic(err)
 	}
 
-	middlewares = append(middlewares, otelgin.Middleware("nga"))
+	middlewares = append(middlewares, otelgin.Middleware("nga-api"))
 
 	middlewares = append(middlewares, gin.Logger(), observe.OTelAccessLogMiddleware(), gin.Recovery())
 

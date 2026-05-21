@@ -70,20 +70,16 @@ docker compose down                   # 停止并移除容器
 ```
 
 5. 配置相关
-涉及配置为 .api.env .sync.env .env 三个文件，可以通过复制对应的 sample 文件后进行修改
+涉及配置为 .env 文件，可以通过复制对应的 sample 文件后进行修改
 
 ```sh
-cp .api.env.sample .api.env
-cp .sync.env.sample .sync.sample
 cp .env.sample .env
 ```
 
-.env 中 主要就是
+.env 中主要就是
 - 挂载 sqlite 文件的地址 
 - 是否开启 gin 的 debug 模式的配置 
 - 以及 otel 相关配置 servicename endpoint protocol headers 等
-
-.api.env .sync.env 两个文件，也是 otel 相关的配置，主要就是启动的文件的服务名称和服务的环境
 
 > 注意：如果需要调整启动参数，可直接修改 `docker-compose.yml` 中的 `command` 字段，
 > 或使用环境变量/扩展的 Compose 配置覆盖。
