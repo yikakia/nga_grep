@@ -32,6 +32,7 @@ func OTelAccessLogMiddleware() gin.HandlerFunc {
 			c.Request.Context(),
 			"access log",
 			"method", c.Request.Method,
+			"host", c.Request.Host,
 			"path", c.Request.URL.Path,
 			"status", c.Writer.Status(),
 			"latency_ms", time.Since(start).Milliseconds(),
