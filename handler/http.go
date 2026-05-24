@@ -1,8 +1,6 @@
 package handler
 
 import (
-	"fmt"
-	"log"
 	"log/slog"
 	"net/http"
 	"sort"
@@ -48,15 +46,14 @@ func newGinEngine(cfg RunHttpServerConfig) (*gin.Engine, error) {
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD"}, // 允许的方法
 		AllowHeaders:     []string{"Origin", "Content-Length", "Content-Type"},      // 允许的头
 		ExposeHeaders:    []string{"Content-Length"},                                // 暴露的头
-		AllowCredentials: true,                                                      // 允许携带凭证 (例如 cookies)
-		AllowOriginFunc: func(origin string) bool { // 允许的源的函数 (更灵活的控制)
+		AllowCredentials: true,
+		AllowOriginWithContextFunc: func(c *gin.Context, origin string) bool {
 			for _, s := range cfg.CorsAllowOrigin {
 				if strings.Contains(origin, s) {
 					return true
 				}
-				log.Print(origin)
 			}
-			slog.Warn("hit cors")
+			slog.WarnContext(c.Request.Context(), "hit cors for origin:"+origin)
 			return false
 		},
 		MaxAge: 12 * time.Hour, // 预检请求的缓存时间
@@ -80,14 +77,17 @@ func newGinEngine(cfg RunHttpServerConfig) (*gin.Engine, error) {
 
 func timeSeries(c *gin.Context) {
 	var req timeseriesReq
+
+	ctx := c.Request.Context()
+
 	err := c.ShouldBindQuery(&req)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		slog.WarnContext(c.Request.Context(), "warn bind query failed.")
+		slog.WarnContext(ctx, "warn bind query failed.")
 		return
 	}
 
-	slog.InfoContext(c.Request.Context(), "bind succ", "req", fmt.Sprint(req))
+	slog.InfoContext(ctx, "bind succ", "req", req)
 
 	start := time.Now().AddDate(0, 0, -1)
 	end := time.Now()
