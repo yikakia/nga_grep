@@ -3,6 +3,8 @@ package buildinfo
 import (
 	"runtime/debug"
 	"sync"
+
+	"go.opentelemetry.io/otel/attribute"
 )
 
 var vcsInfo = sync.OnceValue(func() string {
@@ -38,4 +40,8 @@ var vcsInfo = sync.OnceValue(func() string {
 
 func VCSInfo() string {
 	return vcsInfo()
+}
+
+func VCSAttribute() attribute.KeyValue {
+	return attribute.String("vcs.revision", VCSInfo())
 }
