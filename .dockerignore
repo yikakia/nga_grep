@@ -1,6 +1,6 @@
 # VCS
-.git
-.gitignore
+# .git
+# .gitignore
 
 # OS files
 .DS_Store

@@ -78,6 +78,8 @@ func durationThreshold(d, loopMin, loopMax time.Duration) time.Duration {
 }
 
 func SyncServer(cfg SyncServerConfig) {
+	observe.InitAll()
+
 	c := nga.NewClient(nga.Config{
 		BaseUrl:        cfg.Url,
 		NgaPassportUid: cfg.Uid,
@@ -85,7 +87,7 @@ func SyncServer(cfg SyncServerConfig) {
 	})
 
 	initDefaultDB(cfg.DB)
-	observe.InitAll()
+	slog.Info("server start success")
 
 	for {
 		syncOnce(c, cfg)

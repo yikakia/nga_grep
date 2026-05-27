@@ -11,9 +11,11 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 
 COPY . .
 
+RUN git rev-parse --short HEAD > /git_commit.txt
+
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
-    GOOS=linux GOARCH=amd64 go build -o /nga_grep ./main.go
+    GOOS=linux GOARCH=amd64 go build -o /nga_grep .
 
 # final stage
 FROM debian:trixie-slim
@@ -31,6 +33,7 @@ RUN apt-get update \
 WORKDIR /data
 # copy binary
 COPY --from=builder /nga_grep /nga_grep
+COPY --from=builder /git_commit.txt /git_commit.txt
 
 # make binary executable
 RUN chmod +x /nga_grep
