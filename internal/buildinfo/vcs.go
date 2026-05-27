@@ -29,8 +29,8 @@ var vcsInfo = sync.OnceValue(func() string {
 	if revision == "" {
 		return "unknown"
 	}
-	if len(revision) > 6 {
-		revision = revision[:6]
+	if len(revision) > 8 {
+		revision = revision[:8]
 	}
 	if modified {
 		revision += "+dirty"
