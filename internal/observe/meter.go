@@ -16,6 +16,11 @@ var _initMeter = sync.OnceValues(func() (*metric.MeterProvider, error) {
 		return nil, err
 	}
 	mp := metric.NewMeterProvider(
+		// TODO 注入版本信息，可能有用？
+		//metric.WithResource(resource.NewWithAttributes(
+		//	"",
+		//	attribute.String("vcs.revision", buildinfo.VCSInfo()),
+		//)),
 		metric.WithReader(metric.NewPeriodicReader(exporter)),
 	)
 	otel.SetMeterProvider(mp) // 必须注册全局 MeterProvider
