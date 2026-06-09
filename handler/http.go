@@ -10,6 +10,7 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/sourcegraph/conc/pool"
+	"github.com/yikakia/nga_grep/internal"
 	"github.com/yikakia/nga_grep/internal/observe"
 	"github.com/yikakia/nga_grep/pkg/data"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
@@ -87,7 +88,7 @@ func timeSeries(c *gin.Context) {
 		return
 	}
 
-	slog.InfoContext(ctx, "bind succ", "req", req)
+	slog.InfoContext(ctx, "bind succ req:"+internal.LogString(req))
 
 	start := time.Now().AddDate(0, 0, -1)
 	end := time.Now()
