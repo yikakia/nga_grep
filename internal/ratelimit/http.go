@@ -21,7 +21,7 @@ var rl = sync.OnceValue(newRLStore)
 
 // 平均每日10000个点，最大每日10000个点
 func newLimiter() *rate.Limiter {
-	return rate.NewLimiter(rate.Every((24*60*60)/10000), 10000)
+	return rate.NewLimiter(rate.Every(10000/(24*60*60)), 10000)
 }
 
 type rlEntry struct {
