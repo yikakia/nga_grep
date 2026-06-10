@@ -13,6 +13,7 @@ func Init() {
 	rl()
 }
 
+// 平均每三天70000个点，最大每三天 70000 个点
 func HTTPAllow(key string, cost int) bool {
 	return rl().allow(key, cost)
 }

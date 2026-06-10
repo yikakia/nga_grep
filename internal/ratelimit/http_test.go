@@ -9,6 +9,6 @@ import (
 func TestHTTPAllow(t *testing.T) {
 	key := "key"
 	assert.True(t, HTTPAllow(key, 1))
-	assert.True(t, HTTPAllow(key, 9999))
+	assert.True(t, HTTPAllow(key, 69999))
 	assert.False(t, HTTPAllow(key, 1))
 }
