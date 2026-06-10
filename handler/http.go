@@ -79,7 +79,7 @@ func newGinEngine(cfg RunHttpServerConfig) (*gin.Engine, error) {
 			attrs = append(attrs, slog.String(k, strings.Join(v, ",")))
 		}
 
-		slog.InfoContext(ctx, "request headers", slog.GroupAttrs("attrs", attrs...))
+		slog.DebugContext(ctx, "request headers", slog.GroupAttrs("attrs", attrs...))
 		c.Next()
 
 	})
