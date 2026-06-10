@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"fmt"
 	"log/slog"
 	"net/http"
 	"sort"
@@ -11,6 +12,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/sourcegraph/conc/pool"
 	"github.com/yikakia/nga_grep/internal/observe"
+	"github.com/yikakia/nga_grep/internal/ratelimit"
 	"github.com/yikakia/nga_grep/pkg/data"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 )
@@ -127,6 +129,15 @@ func timeSeries(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
+		if duration <= 0 {
+			c.AbortWithStatus(http.StatusBadRequest)
+			return
+		}
+	}
+
+	if !isAllow(c, start, end, duration) {
+		c.AbortWithStatus(http.StatusTooManyRequests)
+		return
 	}
 
 	p := pool.New().WithErrors().WithMaxGoroutines(5)
@@ -210,6 +221,26 @@ func timeSeries(c *gin.Context) {
 	//c.Header("Expires", time.Now().Add(5*time.Minute).UTC().Format(http.TimeFormat))
 
 	c.JSON(http.StatusOK, timeSeriesResp{Data: dots})
+}
+
+func isAllow(c *gin.Context, start, end time.Time, duration time.Duration) bool {
+	ctx := c.Request.Context()
+	if duration <= 0 {
+		slog.WarnContext(ctx, fmt.Sprintf("duration should > 0 but got %v", duration))
+		return false
+	}
+
+	key := strings.Join([]string{"rl", c.ClientIP()}, ":")
+
+	cost := end.Sub(start) / duration
+	if cost <= 0 {
+		slog.WarnContext(ctx, "end should > start.", slog.Time("start", start), slog.Time("end", end))
+		return false
+	}
+
+	slog.DebugContext(ctx, "call http allow.", "key", key, "cost", cost)
+
+	return ratelimit.HTTPAllow(key, int(cost))
 }
 
 type applyFn func([]timeseriesDots)
