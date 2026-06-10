@@ -19,9 +19,9 @@ func HTTPAllow(key string, cost int) bool {
 
 var rl = sync.OnceValue(newRLStore)
 
-// 平均每日10000个点，最大每日10000个点
+// 平均每三天70000个点，最大每三天 70000 个点
 func newLimiter() *rate.Limiter {
-	return rate.NewLimiter(rate.Every(10000/(24*60*60)), 10000)
+	return rate.NewLimiter(rate.Every((3*24*time.Hour)/70000), 70000)
 }
 
 type rlEntry struct {
