@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"fmt"
 	"log/slog"
 	"net/http"
 	"sort"
@@ -10,8 +11,8 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/sourcegraph/conc/pool"
-	"github.com/yikakia/nga_grep/internal"
 	"github.com/yikakia/nga_grep/internal/observe"
+	"github.com/yikakia/nga_grep/internal/ratelimit"
 	"github.com/yikakia/nga_grep/pkg/data"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 )
@@ -101,7 +102,7 @@ func timeSeries(c *gin.Context) {
 		return
 	}
 
-	slog.InfoContext(ctx, "bind succ req:"+internal.LogString(req))
+	slog.InfoContext(ctx, "bind params succ", req.toAttr())
 
 	start := time.Now().AddDate(0, 0, -1)
 	end := time.Now()
@@ -128,6 +129,15 @@ func timeSeries(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
+		if duration <= 0 {
+			c.AbortWithStatus(http.StatusBadRequest)
+			return
+		}
+	}
+
+	if !isAllow(c, start, end, duration) {
+		c.AbortWithStatus(http.StatusTooManyRequests)
+		return
 	}
 
 	p := pool.New().WithErrors().WithMaxGoroutines(5)
@@ -213,6 +223,26 @@ func timeSeries(c *gin.Context) {
 	c.JSON(http.StatusOK, timeSeriesResp{Data: dots})
 }
 
+func isAllow(c *gin.Context, start, end time.Time, duration time.Duration) bool {
+	ctx := c.Request.Context()
+	if duration <= 0 {
+		slog.WarnContext(ctx, fmt.Sprintf("duration should > 0 but got %v", duration))
+		return false
+	}
+
+	key := strings.Join([]string{"rl", c.ClientIP()}, ":")
+
+	cost := end.Sub(start)/duration + 1
+	if cost <= 0 {
+		slog.WarnContext(ctx, "end should > start.", slog.Time("start", start), slog.Time("end", end))
+		return false
+	}
+
+	slog.DebugContext(ctx, "call http allow.", "key", key, "cost", cost)
+
+	return ratelimit.HTTPAllow(key, int(cost))
+}
+
 type applyFn func([]timeseriesDots)
 
 func buildMaApplyFn(start, end time.Time, duration time.Duration, n int, fn func(resps []timeseriesDots, maValues []float64)) (applyFn, error) {
@@ -243,6 +273,14 @@ type timeseriesReq struct {
 	EndDate      string `form:"endDate"`
 	TimeInterval string `form:"timeInterval"`
 	Indicator    string `form:"indicator"` // 技术指标
+}
+
+func (t timeseriesReq) toAttr() slog.Attr {
+	return slog.Group("timeseriesReq",
+		slog.String("startDate", t.StartDate),
+		slog.String("endDate", t.EndDate),
+		slog.String("timeInterval", t.TimeInterval),
+		slog.String("indicator", t.Indicator))
 }
 
 const (
