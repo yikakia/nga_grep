@@ -31,7 +31,7 @@ var _initLogger = sync.OnceValues(func() (*log.LoggerProvider, error) {
 
 	final := slog.NewMultiHandler(otelSlogHandler, slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
 		AddSource: true,
-		Level:     slog.LevelInfo,
+		Level:     slog.LevelDebug,
 	}))
 
 	slog.SetDefault(slog.New(final))

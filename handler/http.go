@@ -71,10 +71,17 @@ func newGinEngine(cfg RunHttpServerConfig) (*gin.Engine, error) {
 
 	middlewares = append(middlewares, gin.Logger(), observe.OTelAccessLogMiddleware(), gin.Recovery())
 
-	middlewares = append(middlewares, func(gctx *gin.Context) {
-		ctx := gctx.Request.Context()
+	middlewares = append(middlewares, func(c *gin.Context) {
+		ctx := c.Request.Context()
 		// 打印所有的 header
-		slog.DebugContext(ctx, "request headers"+internal.LogString(gctx.Request.Header))
+		attrs := make([]slog.Attr, 0, len(c.Request.Header))
+		for k, v := range c.Request.Header {
+			attrs = append(attrs, slog.String(k, strings.Join(v, ",")))
+		}
+
+		slog.InfoContext(ctx, "request headers", slog.GroupAttrs("attrs", attrs...))
+		c.Next()
+
 	})
 
 	r.Use(middlewares...)
