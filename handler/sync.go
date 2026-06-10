@@ -86,7 +86,7 @@ func SyncServer(cfg SyncServerConfig) {
 		NgaPassportCid: cfg.Cid,
 	})
 
-	initDefaultDB(cfg.DB)
+	InitDefaultDB(cfg.DB)
 	slog.Info("server start success")
 
 	for {

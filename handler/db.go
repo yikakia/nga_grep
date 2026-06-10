@@ -13,13 +13,13 @@ var (
 	defaultDBPath string
 )
 
-// initDefaultDB 初始化 gorm/gen 的默认 DB。
+// InitDefaultDB 初始化 gorm/gen 的默认 DB。
 //
 // 由于 HTTP 与 sync 可能并发启动，为避免对 [`gen.SetDefault()`](model/gen/gen.go:24) 的并发写造成数据竞争，
 // 这里使用 sync.Once 确保只初始化一次。
 //
 // 注意：若在同一进程中传入不同的 dbPath，将直接 panic。
-func initDefaultDB(dbPath string) {
+func InitDefaultDB(dbPath string) {
 	defaultDBOnce.Do(func() {
 		defaultDBPath = dbPath
 		gen.SetDefault(client.NewDB(dbPath))

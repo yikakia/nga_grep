@@ -6,6 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/yikakia/nga_grep/handler"
+	"github.com/yikakia/nga_grep/handler/http"
 )
 
 var (
@@ -79,16 +80,16 @@ func runApiServerWithModes(m apiServerModes) {
 	switch {
 	case m.Sync && m.HTTP:
 		go handler.SyncServer(buildSyncConfig())
-		handler.RunHttpServer(buildHttpConfig())
+		http.RunHttpServer(buildHttpConfig())
 	case m.HTTP:
-		handler.RunHttpServer(buildHttpConfig())
+		http.RunHttpServer(buildHttpConfig())
 	case m.Sync:
 		handler.SyncServer(buildSyncConfig())
 	}
 }
 
-func buildHttpConfig() handler.RunHttpServerConfig {
-	return handler.RunHttpServerConfig{
+func buildHttpConfig() http.RunHttpServerConfig {
+	return http.RunHttpServerConfig{
 		Port:            port,
 		CorsAllowOrigin: corsAllowOrigin,
 		DB:              dbPath,
