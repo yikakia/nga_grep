@@ -10,6 +10,7 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/sourcegraph/conc/pool"
+	"github.com/yikakia/nga_grep/internal"
 	"github.com/yikakia/nga_grep/internal/observe"
 	"github.com/yikakia/nga_grep/pkg/data"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
@@ -70,6 +71,19 @@ func newGinEngine(cfg RunHttpServerConfig) (*gin.Engine, error) {
 
 	middlewares = append(middlewares, gin.Logger(), observe.OTelAccessLogMiddleware(), gin.Recovery())
 
+	middlewares = append(middlewares, func(c *gin.Context) {
+		ctx := c.Request.Context()
+		// 打印所有的 header
+		attrs := make([]slog.Attr, 0, len(c.Request.Header))
+		for k, v := range c.Request.Header {
+			attrs = append(attrs, slog.String(k, strings.Join(v, ",")))
+		}
+
+		slog.DebugContext(ctx, "request headers", slog.GroupAttrs("attrs", attrs...))
+		c.Next()
+
+	})
+
 	r.Use(middlewares...)
 
 	return r, nil
@@ -87,7 +101,7 @@ func timeSeries(c *gin.Context) {
 		return
 	}
 
-	slog.InfoContext(ctx, "bind succ", "req", req)
+	slog.InfoContext(ctx, "bind succ req:"+internal.LogString(req))
 
 	start := time.Now().AddDate(0, 0, -1)
 	end := time.Now()

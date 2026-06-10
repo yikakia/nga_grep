@@ -9,6 +9,7 @@ import (
 	"github.com/yikakia/nga_grep/internal/buildinfo"
 	"go.opentelemetry.io/contrib/bridges/otelslog"
 	"go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploghttp"
+	"go.opentelemetry.io/otel/exporters/stdout/stdoutlog"
 	"go.opentelemetry.io/otel/log/global"
 	"go.opentelemetry.io/otel/sdk/log"
 )
@@ -20,7 +21,14 @@ var _initLogger = sync.OnceValues(func() (*log.LoggerProvider, error) {
 		return nil, err
 	}
 	processor := log.NewBatchProcessor(exp)
-	provider := log.NewLoggerProvider(log.WithProcessor(processor))
+
+	stdoutExporter, err := stdoutlog.New(stdoutlog.WithWriter(os.Stdout))
+	if err != nil {
+		return nil, err
+	}
+	stdoutProcessor := log.NewBatchProcessor(stdoutExporter)
+
+	provider := log.NewLoggerProvider(log.WithProcessor(stdoutProcessor), log.WithProcessor(processor))
 	global.SetLoggerProvider(provider)
 
 	// 这里的name是 scope name
@@ -29,12 +37,7 @@ var _initLogger = sync.OnceValues(func() (*log.LoggerProvider, error) {
 		otelslog.WithAttributes(buildinfo.VCSAttribute()),
 	)
 
-	final := slog.NewMultiHandler(otelSlogHandler, slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
-		AddSource: true,
-		Level:     slog.LevelInfo,
-	}))
-
-	slog.SetDefault(slog.New(final))
+	slog.SetDefault(slog.New(otelSlogHandler))
 
 	return provider, nil
 })
