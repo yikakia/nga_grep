@@ -232,7 +232,7 @@ func isAllow(c *gin.Context, start, end time.Time, duration time.Duration) bool 
 
 	key := strings.Join([]string{"rl", c.ClientIP()}, ":")
 
-	cost := end.Sub(start) / duration
+	cost := end.Sub(start)/duration + 1
 	if cost <= 0 {
 		slog.WarnContext(ctx, "end should > start.", slog.Time("start", start), slog.Time("end", end))
 		return false
