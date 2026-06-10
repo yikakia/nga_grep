@@ -12,7 +12,7 @@ import (
 
 func isAllow(c *gin.Context, start, end time.Time, duration time.Duration) (isAllow bool) {
 	ctx := c.Request.Context()
-	defer recordRateLimit(ctx, isAllow)
+	defer func() { recordRateLimit(ctx, isAllow) }()
 
 	if duration <= 0 {
 		slog.WarnContext(ctx, fmt.Sprintf("duration should > 0 but got %v", duration))
