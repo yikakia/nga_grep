@@ -1,94 +1,15 @@
-package handler
+package http
 
 import (
-	"fmt"
 	"log/slog"
 	"net/http"
 	"sort"
-	"strings"
 	"time"
 
-	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/sourcegraph/conc/pool"
-	"github.com/yikakia/nga_grep/internal/observe"
-	"github.com/yikakia/nga_grep/internal/ratelimit"
 	"github.com/yikakia/nga_grep/pkg/data"
-	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 )
-
-type RunHttpServerConfig struct {
-	Port            string
-	CorsAllowOrigin []string
-	DB              string
-}
-
-func RunHttpServer(cfg RunHttpServerConfig) {
-	initDefaultDB(cfg.DB)
-
-	r, err := newGinEngine(cfg)
-	if err != nil {
-		panic(err)
-	}
-
-	// 监听 /my-path 路径
-	r.GET("/api/timeseries", timeSeries)
-
-	slog.Info("apiserver start...")
-	err = r.Run(cfg.Port)
-	if err != nil {
-		panic(err)
-	}
-}
-
-func newGinEngine(cfg RunHttpServerConfig) (*gin.Engine, error) {
-	r := gin.New()
-
-	config := cors.Config{
-		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD"}, // 允许的方法
-		AllowHeaders:     []string{"Origin", "Content-Length", "Content-Type"},      // 允许的头
-		ExposeHeaders:    []string{"Content-Length"},                                // 暴露的头
-		AllowCredentials: true,
-		AllowOriginWithContextFunc: func(c *gin.Context, origin string) bool {
-			for _, s := range cfg.CorsAllowOrigin {
-				if strings.Contains(origin, s) {
-					return true
-				}
-			}
-			slog.WarnContext(c.Request.Context(), "hit cors for origin:"+origin)
-			return false
-		},
-		MaxAge: 12 * time.Hour, // 预检请求的缓存时间
-	}
-
-	middlewares := []gin.HandlerFunc{cors.New(config)}
-
-	err := observe.InitAll()
-	if err != nil {
-		panic(err)
-	}
-
-	middlewares = append(middlewares, otelgin.Middleware("nga-api"))
-
-	middlewares = append(middlewares, gin.Logger(), observe.OTelAccessLogMiddleware(), gin.Recovery())
-
-	middlewares = append(middlewares, func(c *gin.Context) {
-		ctx := c.Request.Context()
-		// 打印所有的 header
-		attrs := make([]slog.Attr, 0, len(c.Request.Header))
-		for k, v := range c.Request.Header {
-			attrs = append(attrs, slog.String(k, strings.Join(v, ",")))
-		}
-
-		slog.DebugContext(ctx, "request headers", slog.GroupAttrs("attrs", attrs...))
-		c.Next()
-
-	})
-
-	r.Use(middlewares...)
-
-	return r, nil
-}
 
 func timeSeries(c *gin.Context) {
 	var req timeseriesReq
@@ -223,26 +144,6 @@ func timeSeries(c *gin.Context) {
 	c.JSON(http.StatusOK, timeSeriesResp{Data: dots})
 }
 
-func isAllow(c *gin.Context, start, end time.Time, duration time.Duration) bool {
-	ctx := c.Request.Context()
-	if duration <= 0 {
-		slog.WarnContext(ctx, fmt.Sprintf("duration should > 0 but got %v", duration))
-		return false
-	}
-
-	key := strings.Join([]string{"rl", c.ClientIP()}, ":")
-
-	cost := end.Sub(start)/duration + 1
-	if cost <= 0 {
-		slog.WarnContext(ctx, "end should > start.", slog.Time("start", start), slog.Time("end", end))
-		return false
-	}
-
-	slog.DebugContext(ctx, "call http allow.", "key", key, "cost", cost)
-
-	return ratelimit.HTTPAllow(key, int(cost))
-}
-
 type applyFn func([]timeseriesDots)
 
 func buildMaApplyFn(start, end time.Time, duration time.Duration, n int, fn func(resps []timeseriesDots, maValues []float64)) (applyFn, error) {
@@ -266,42 +167,4 @@ func buildBollApplyFn(start, end time.Time, duration time.Duration, period int, 
 	return func(resp []timeseriesDots) {
 		fn(resp, bolls)
 	}, nil
-}
-
-type timeseriesReq struct {
-	StartDate    string `form:"startDate"`
-	EndDate      string `form:"endDate"`
-	TimeInterval string `form:"timeInterval"`
-	Indicator    string `form:"indicator"` // 技术指标
-}
-
-func (t timeseriesReq) toAttr() slog.Attr {
-	return slog.Group("timeseriesReq",
-		slog.String("startDate", t.StartDate),
-		slog.String("endDate", t.EndDate),
-		slog.String("timeInterval", t.TimeInterval),
-		slog.String("indicator", t.Indicator))
-}
-
-const (
-	indicatorMA5  = "ma5"
-	indicatorMA10 = "ma10"
-	indicatorBOLL = "boll"
-)
-
-type timeSeriesResp struct {
-	Data []timeseriesDots `json:"data"`
-}
-
-type timeseriesDots struct {
-	Timestamp int64         `json:"timestamp"` // 毫秒
-	Value     int           `json:"value"`
-	MA5       float64       `json:"ma5"`
-	MA10      float64       `json:"ma10"`
-	Boll      BollingerBand `json:"boll"`
-}
-type BollingerBand struct {
-	Middle float64 `json:"middle"`
-	Upper  float64 `json:"upper"`
-	Lower  float64 `json:"lower"`
 }
