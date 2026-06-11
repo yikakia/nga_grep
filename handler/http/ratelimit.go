@@ -9,8 +9,10 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/redis/go-redis/extra/redisotel-native/v9"
 	"github.com/redis/go-redis/v9"
 	"github.com/yikakia/nga_grep/internal/env"
+	"github.com/yikakia/nga_grep/internal/observe"
 	"github.com/yikakia/nga_grep/internal/ratelimit"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/trace"
@@ -80,10 +82,26 @@ var redisRL = sync.OnceValue(func() *ratelimit.TokenBucket {
 	opt, _ := redis.ParseURL(env.REDIS_URL.Get())
 	client := redis.NewClient(opt)
 
+	observe.InitAll()
+	regRedisOTEL()
+
 	client.Ping(context.Background())
+
+	slog.Info("redis client init")
 	return ratelimit.NewTokenBucket(ratelimit.TokenBucketConfig{
 		Capacity:   burst,
 		RefillRate: float64(burst) / float64(_3DaySeconds) / 2,
 		Client:     client,
 	})
 })
+
+func regRedisOTEL() {
+	i := redisotel.GetObservabilityInstance()
+	config := redisotel.NewConfig().WithEnabled(true)
+
+	err := i.Init(config)
+	if err != nil {
+		slog.Error("redis init with otel failed", "err", err.Error())
+		return
+	}
+}

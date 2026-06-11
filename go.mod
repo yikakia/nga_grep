@@ -8,7 +8,8 @@ require (
 	github.com/gin-gonic/gin v1.12.0
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pkg/errors v0.9.1
-	github.com/redis/go-redis/v9 v9.20.0
+	github.com/redis/go-redis/extra/redisotel-native/v9 v9.20.1
+	github.com/redis/go-redis/v9 v9.20.1
 	github.com/samber/lo v1.49.1
 	github.com/sourcegraph/conc v0.3.1-0.20240121214520-5f936abd7ae8
 	github.com/spf13/cobra v1.9.1
