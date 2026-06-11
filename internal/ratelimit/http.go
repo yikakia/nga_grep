@@ -47,6 +47,7 @@ var redisRL = sync.OnceValue(func() *TokenBucket {
 	opt, _ := redis.ParseURL(env.REDIS_URL.Get())
 	client := redis.NewClient(opt)
 
+	client.Ping(context.Background())
 	return NewTokenBucket(TokenBucketConfig{
 		Capacity:   burst,
 		RefillRate: float64(burst) / float64(_3DaySeconds) / 2,
