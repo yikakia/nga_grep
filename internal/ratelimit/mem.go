@@ -14,9 +14,11 @@ type rlEntry struct {
 	lastSeen time.Time
 }
 
-func newRLStore() *rlStore {
-	rl := &rlStore{
+func NewRLStore(r rate.Limit, b int) *RlStore {
+	rl := &RlStore{
 		m: make(map[string]*rlEntry),
+		r: r,
+		b: b,
 	}
 	go func() {
 		defer func() {
@@ -28,18 +30,20 @@ func newRLStore() *rlStore {
 	return rl
 }
 
-type rlStore struct {
+type RlStore struct {
 	m  map[string]*rlEntry
 	mu sync.Mutex
+	r  rate.Limit
+	b  int
 }
 
-func (r *rlStore) allow(key string, cost int) bool {
+func (r *RlStore) AllowN(key string, cost int) bool {
 	e := r.get(key)
 
 	return e.rl.AllowN(time.Now(), cost)
 }
 
-func (r *rlStore) get(key string) *rlEntry {
+func (r *RlStore) get(key string) *rlEntry {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -49,14 +53,14 @@ func (r *rlStore) get(key string) *rlEntry {
 		return e
 	}
 	e = &rlEntry{
-		rl:       newLimiter(),
+		rl:       rate.NewLimiter(r.r, r.b),
 		lastSeen: time.Now(),
 	}
 	r.m[key] = e
 	return e
 }
 
-func (r *rlStore) cleanup() {
+func (r *RlStore) cleanup() {
 	for {
 		time.Sleep(time.Minute)
 		now := time.Now()

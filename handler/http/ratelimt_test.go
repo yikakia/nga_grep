@@ -1,4 +1,4 @@
-package ratelimit
+package http
 
 import (
 	"context"
@@ -14,9 +14,9 @@ var (
 
 func TestMemAllow(t *testing.T) {
 
-	assert.True(t, memeRL().allow(key, 1))
-	assert.True(t, memeRL().allow(key, 69999))
-	assert.False(t, memeRL().allow(key, 1))
+	assert.True(t, memRL().AllowN(key, 1))
+	assert.True(t, memRL().AllowN(key, 69999))
+	assert.False(t, memRL().AllowN(key, 1))
 }
 
 //func TestRedisAllow(t *testing.T) {

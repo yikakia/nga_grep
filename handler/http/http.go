@@ -4,7 +4,6 @@ import (
 	"log/slog"
 
 	"github.com/yikakia/nga_grep/handler"
-	"github.com/yikakia/nga_grep/internal/ratelimit"
 )
 
 type RunHttpServerConfig struct {
@@ -15,7 +14,7 @@ type RunHttpServerConfig struct {
 
 func RunHttpServer(cfg RunHttpServerConfig) {
 	handler.InitDefaultDB(cfg.DB)
-	ratelimit.Init()
+	initRateLimiter()
 
 	r, err := newGinEngine(cfg)
 	if err != nil {
