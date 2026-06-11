@@ -53,6 +53,11 @@ end
 -- Update state
 redis.call('HMSET', key, 'tokens', tokens, 'last_refill', last_refill)
 
+-- Set expiration: 2 * time to refill the bucket from empty to full
+local intervals_to_full = math.ceil(capacity / refill_rate)
+local ttl = 2 * intervals_to_full * refill_interval
+redis.call('EXPIRE', key, ttl)
+
 -- Return result: allowed (1 or 0) and remaining tokens
 return {allowed, tokens}
 `
