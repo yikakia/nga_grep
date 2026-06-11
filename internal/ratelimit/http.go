@@ -1,103 +1,55 @@
 package ratelimit
 
 import (
-	"fmt"
+	"context"
 	"log/slog"
 	"sync"
 	"time"
 
+	"github.com/redis/go-redis/v9"
+	"github.com/yikakia/nga_grep/internal/env"
 	"golang.org/x/time/rate"
 )
 
 func Init() {
-	rl()
+	if env.REDIS_URL.Get() != "" {
+		redisRL()
+		return
+	}
+	memeRL()
 }
 
 // 平均每三天70000个点，最大每三天 70000 个点
-func HTTPAllow(key string, cost int) bool {
-	return rl().allow(key, cost)
+func HTTPAllow(ctx context.Context, key string, cost int) bool {
+	if env.REDIS_URL.Get() != "" {
+		allow, _, err := redisRL().AllowN(ctx, key, cost)
+		if err != nil {
+			slog.WarnContext(ctx, "call redis failed", "err", err.Error())
+			return false
+		}
+		return allow
+	}
+
+	return memeRL().allow(key, cost)
 }
 
-var rl = sync.OnceValue(newRLStore)
+const _3DaySeconds = 3 * 24 * 60 * 60
+const burst = 70000
+
+var memeRL = sync.OnceValue(newRLStore)
 
 // 平均每三天70000个点，最大每三天 70000 个点
 func newLimiter() *rate.Limiter {
-	return rate.NewLimiter(rate.Every((3*24*time.Hour)/70000), 70000)
+	return rate.NewLimiter(rate.Every((3*24*time.Hour)/burst), burst)
 }
 
-type rlEntry struct {
-	rl       *rate.Limiter
-	lastSeen time.Time
-}
+var redisRL = sync.OnceValue(func() *TokenBucket {
+	opt, _ := redis.ParseURL(env.REDIS_URL.Get())
+	client := redis.NewClient(opt)
 
-func newRLStore() *rlStore {
-	rl := &rlStore{
-		m: make(map[string]*rlEntry),
-	}
-	go func() {
-		defer func() {
-			v := recover()
-			slog.Info(fmt.Sprintf("panic for rl cleanup. detail:%v", v))
-		}()
-		rl.cleanup()
-	}()
-	return rl
-}
-
-type rlStore struct {
-	m  map[string]*rlEntry
-	mu sync.Mutex
-}
-
-func (r *rlStore) allow(key string, cost int) bool {
-	e := r.get(key)
-
-	return e.rl.AllowN(time.Now(), cost)
-}
-
-func (r *rlStore) get(key string) *rlEntry {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	e, ok := r.m[key]
-	if ok {
-		e.lastSeen = time.Now()
-		return e
-	}
-	e = &rlEntry{
-		rl:       newLimiter(),
-		lastSeen: time.Now(),
-	}
-	r.m[key] = e
-	return e
-}
-
-func (r *rlStore) cleanup() {
-	for {
-		time.Sleep(time.Minute)
-		now := time.Now()
-
-		r.mu.Lock()
-		total := 0
-		cnt := 0
-		for k, v := range r.m {
-			if now.Sub(v.lastSeen) > 48*time.Hour {
-				delete(r.m, k)
-				cnt++
-			}
-			total++
-
-			// 查 20 个 如果超时的大于 33% 则继续，否则退出
-			if total < 20 {
-				continue
-			}
-			if cnt*3 >= total {
-				total = 0
-				cnt = 0
-			} else {
-				break
-			}
-		}
-		r.mu.Unlock()
-	}
-}
+	return NewTokenBucket(TokenBucketConfig{
+		Capacity:   burst,
+		RefillRate: float64(burst) / float64(_3DaySeconds) / 2,
+		Client:     client,
+	})
+})

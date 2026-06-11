@@ -29,5 +29,5 @@ func isAllow(c *gin.Context, start, end time.Time, duration time.Duration) (isAl
 
 	slog.DebugContext(ctx, "call http allow.", "key", key, "cost", cost)
 
-	return ratelimit.HTTPAllow(key, int(cost))
+	return ratelimit.HTTPAllow(ctx, key, int(cost))
 }
