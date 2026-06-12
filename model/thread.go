@@ -11,6 +11,6 @@ type ThreadLatestData struct {
 }
 
 type ThreadCount struct {
-	DateTime int64 `gorm:"column:date_time;primaryKey"`
+	DateTime int64 `gorm:"column:date_time;primaryKey;autoIncrement:false"`
 	Count    int   `gorm:"column:count"`
 }
