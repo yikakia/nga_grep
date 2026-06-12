@@ -15,5 +15,6 @@ func main() {
 	})
 	g.ApplyBasic(&model.ThreadLatestData{})
 	g.ApplyBasic(&model.ThreadCount{})
+	g.ApplyInterface(func(query model.Query) {}, model.ThreadCount{})
 	g.Execute()
 }

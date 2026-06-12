@@ -2,6 +2,10 @@ package data
 
 import (
 	"time"
+
+	"github.com/bytedance/gg/gslice"
+	"github.com/yikakia/nga_grep/model"
+	"github.com/yikakia/nga_grep/model/gen"
 )
 
 type Dot struct {
@@ -11,6 +15,10 @@ type Dot struct {
 
 // 给定起始截至时间，以及时间间隔，返回多个时间段的发帖量
 func GetTimePointsData(start, end time.Time, duration time.Duration) ([]Dot, error) {
+	return getWithSqliteGroupby(start, end, duration)
+}
+
+func getWithCache(start, end time.Time, duration time.Duration) ([]Dot, error) {
 	var dots []Dot
 	for cur := start; !cur.After(end); cur = cur.Add(duration) {
 		data, err := getTimePointDataWithCache(cur, duration)
@@ -21,6 +29,33 @@ func GetTimePointsData(start, end time.Time, duration time.Duration) ([]Dot, err
 		dots = append(dots, Dot{
 			Timestamp: int((cur.Unix() / int64(duration.Seconds())) * int64(duration.Seconds())),
 			Count:     data,
+		})
+	}
+	return dots, nil
+}
+func getWithSqliteGroupby(start, end time.Time, duration time.Duration) ([]Dot, error) {
+	startTs := truncateToDuration(start, duration)
+	endTs := truncateToDuration(end.Add(duration), duration)
+	durationSecond := int64(duration.Seconds())
+	tc := gen.Q.ThreadCount
+
+	selectDots, err := tc.SelectDots(startTs, endTs, durationSecond)
+	if err != nil {
+		return nil, err
+	}
+	mappedDots := gslice.ToMapValues(selectDots, func(t *model.ThreadCount) int64 {
+		return t.DateTime
+	})
+
+	var dots []Dot
+	for cur := startTs; cur < endTs; cur += durationSecond {
+		cnt := 0
+		if d, ok := mappedDots[cur]; ok {
+			cnt = d.Count
+		}
+		dots = append(dots, Dot{
+			Timestamp: int(cur),
+			Count:     cnt,
 		})
 	}
 	return dots, nil

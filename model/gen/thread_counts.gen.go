@@ -6,6 +6,7 @@ package gen
 
 import (
 	"context"
+	"strings"
 
 	"github.com/yikakia/nga_grep/model"
 	"gorm.io/gorm"
@@ -150,6 +151,36 @@ type IThreadCountDo interface {
 	Returning(value interface{}, columns ...string) IThreadCountDo
 	UnderlyingDB() *gorm.DB
 	schema.Tabler
+
+	SelectDots(start int64, end int64, durationSecond int64) (result []*model.ThreadCount, err error)
+}
+
+// SELECT
+//
+//	sum(count) as count,
+//	(date_time / @durationSecond) * @durationSecond as date_time
+//
+// FROM @@table
+// WHERE date_time >= @start and date_time < @end
+// GROUP BY
+//
+//	date_time / @durationSecond
+func (t threadCountDo) SelectDots(start int64, end int64, durationSecond int64) (result []*model.ThreadCount, err error) {
+	var params []interface{}
+
+	var generateSQL strings.Builder
+	params = append(params, durationSecond)
+	params = append(params, durationSecond)
+	params = append(params, start)
+	params = append(params, end)
+	params = append(params, durationSecond)
+	generateSQL.WriteString("SELECT sum(count) as count, (date_time / ?) * ? as date_time FROM thread_counts WHERE date_time >= ? and date_time < ? GROUP BY date_time / ? ")
+
+	var executeSQL *gorm.DB
+	executeSQL = t.UnderlyingDB().Raw(generateSQL.String(), params...).Find(&result) // ignore_security_alert
+	err = executeSQL.Error
+
+	return
 }
 
 func (t threadCountDo) Debug() IThreadCountDo {

@@ -3,6 +3,7 @@ module github.com/yikakia/nga_grep
 go 1.26
 
 require (
+	github.com/bytedance/gg v1.1.0
 	github.com/dgraph-io/ristretto/v2 v2.4.0
 	github.com/gin-contrib/cors v1.7.5
 	github.com/gin-gonic/gin v1.12.0
