@@ -3,7 +3,6 @@ package observe
 import (
 	"context"
 	"log/slog"
-	"os"
 	"sync"
 
 	"github.com/yikakia/nga_grep/internal/buildinfo"
@@ -22,7 +21,7 @@ var _initLogger = sync.OnceValues(func() (*log.LoggerProvider, error) {
 	}
 	processor := log.NewBatchProcessor(exp)
 
-	stdoutExporter, err := stdoutlog.New(stdoutlog.WithWriter(os.Stdout))
+	stdoutExporter, err := stdoutlog.New()
 	if err != nil {
 		return nil, err
 	}

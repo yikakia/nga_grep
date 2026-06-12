@@ -74,6 +74,7 @@ docker compose down                   # 停止并移除容器
 
 ```sh
 cp .env.sample .env
+cp docker-compose.sample.yml docker-compose.yml
 ```
 
 .env 中主要就是

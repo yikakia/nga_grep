@@ -28,8 +28,6 @@ services:
       - --db=/data/nga.db
       - --cors=localhost,dashidai.yikakia.com,nga-grep-front.pages.dev
       - --port=:11648
-      # 如需一个容器同时跑 http+sync，可启用下行并移除独立的 sync service。
-      # - --mode=http,sync
     ports:
       - "127.0.0.1:11648:11648"
     env_file:
