@@ -11,9 +11,11 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/extra/redisotel-native/v9"
 	"github.com/redis/go-redis/v9"
+	"github.com/sourcegraph/conc/panics"
 	"github.com/yikakia/nga_grep/internal/env"
 	"github.com/yikakia/nga_grep/internal/observe"
 	"github.com/yikakia/nga_grep/internal/ratelimit"
+	"go.opentelemetry.io/otel/attribute"
 	"golang.org/x/time/rate"
 )
 
@@ -30,15 +32,23 @@ func isAllow(c *gin.Context, start, end time.Time, duration time.Duration) (isAl
 
 	key := strings.Join([]string{"rl", c.ClientIP()}, ":")
 
-	cost := end.Sub(start)/duration + 1
+	cost := int(end.Sub(start)/duration + 1)
 	if cost <= 0 {
 		slog.WarnContext(ctx, "end should > start.", slog.Time("start", start), slog.Time("end", end))
 		return false
 	}
+	sp.SetAttributes(attribute.Int("cost", cost))
 
 	slog.DebugContext(ctx, "call http allow.", "key", key, "cost", cost)
+	// 如果查询量小，不是明细，则直接放行，但是计入额度
+	if cost < 1000 {
+		go panics.Try(func() {
+			doAllow(ctx, key, cost)
+		})
+		return true
+	}
 
-	return doAllow(ctx, key, int(cost))
+	return doAllow(ctx, key, cost)
 }
 
 func initRateLimiter() {
