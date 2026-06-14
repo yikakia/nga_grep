@@ -58,6 +58,8 @@ docker build . -t ghcr.io/yikakia/nga_grep
 docker compose pull
 # 重启容器
 docker compose up -d
+# 如果需要同时启动前端
+docker compose --profile fe up -d
 ```
 
 - `sync` 容器会执行数据爬取命令并将结果写入 `/data/nga.db`。
