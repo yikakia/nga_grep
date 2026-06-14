@@ -10,19 +10,20 @@ import (
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
-	"go.opentelemetry.io/otel/sdk/trace"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/trace"
 )
 
-var _initTracer = sync.OnceValues(func() (*trace.TracerProvider, error) {
+var _initTracer = sync.OnceValues(func() (*sdktrace.TracerProvider, error) {
 	exporter, err := otlptrace.New(context.Background(), otlptracehttp.NewClient())
 	if err != nil {
 		return nil, err
 	}
 
-	tp := trace.NewTracerProvider(
-		trace.WithSampler(trace.AlwaysSample()),
-		trace.WithBatcher(exporter),
-		trace.WithResource(resource.NewWithAttributes("", buildinfo.VCSAttribute())),
+	tp := sdktrace.NewTracerProvider(
+		sdktrace.WithSampler(sdktrace.AlwaysSample()),
+		sdktrace.WithBatcher(exporter),
+		sdktrace.WithResource(resource.NewWithAttributes("", buildinfo.VCSAttribute())),
 	)
 	otel.SetTracerProvider(tp)
 	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
@@ -30,6 +31,14 @@ var _initTracer = sync.OnceValues(func() (*trace.TracerProvider, error) {
 	return tp, err
 })
 
-func InitTracer() (*trace.TracerProvider, error) {
+func InitTracer() (*sdktrace.TracerProvider, error) {
 	return _initTracer()
+}
+
+var tracer = sync.OnceValue(func() trace.Tracer {
+	return otel.Tracer("")
+})
+
+func Start(ctx context.Context, name string, _ ...trace.SpanStartOption) (context.Context, trace.Span) {
+	return tracer().Start(ctx, name)
 }

@@ -1,6 +1,7 @@
 package http
 
 import (
+	"context"
 	"log/slog"
 	"net/http"
 	"sort"
@@ -8,6 +9,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/sourcegraph/conc/pool"
+	"github.com/yikakia/nga_grep/internal/observe"
 	"github.com/yikakia/nga_grep/pkg/data"
 )
 
@@ -65,7 +67,11 @@ func timeSeries(c *gin.Context) {
 	var dots []timeseriesDots
 
 	p.Go(func() error {
-		_dots, err := data.GetTimePointsData(start, end, duration)
+		ctx := ctx
+		ctx, sp := observe.Start(ctx, "main_data")
+		defer sp.End()
+
+		_dots, err := data.GetTimePointsData(ctx, start, end, duration)
 		if err != nil {
 			return err
 		}
@@ -87,7 +93,7 @@ func timeSeries(c *gin.Context) {
 	p.Go(func() error {
 		switch req.Indicator {
 		case indicatorMA5:
-			fn, err := buildMaApplyFn(start, end, duration, 5, func(resps []timeseriesDots, maValues []float64) {
+			fn, err := buildMaApplyFn(ctx, start, end, duration, 5, func(resps []timeseriesDots, maValues []float64) {
 				for i := range resps {
 					resps[i].MA5 = maValues[i]
 				}
@@ -98,7 +104,7 @@ func timeSeries(c *gin.Context) {
 			apply = fn
 			return nil
 		case indicatorMA10:
-			fn, err := buildMaApplyFn(start, end, duration, 10, func(resps []timeseriesDots, maValue []float64) {
+			fn, err := buildMaApplyFn(ctx, start, end, duration, 10, func(resps []timeseriesDots, maValue []float64) {
 				for i := range resps {
 					resps[i].MA10 = maValue[i]
 				}
@@ -109,7 +115,7 @@ func timeSeries(c *gin.Context) {
 			apply = fn
 			return nil
 		case indicatorBOLL:
-			fn, err := buildBollApplyFn(start, end, duration, 20, 2, func(resps []timeseriesDots, bollValues []data.BollingerBand) {
+			fn, err := buildBollApplyFn(ctx, start, end, duration, 20, 2, func(resps []timeseriesDots, bollValues []data.BollingerBand) {
 				for i := range resps {
 					resps[i].Boll = BollingerBand{
 						Middle: bollValues[i].Middle,
@@ -146,8 +152,11 @@ func timeSeries(c *gin.Context) {
 
 type applyFn func([]timeseriesDots)
 
-func buildMaApplyFn(start, end time.Time, duration time.Duration, n int, fn func(resps []timeseriesDots, maValues []float64)) (applyFn, error) {
-	maN, err := data.GetTimePointsData(start.Add(time.Duration(-n+1)*duration), end, duration)
+func buildMaApplyFn(ctx context.Context, start, end time.Time, duration time.Duration, n int, fn func(resps []timeseriesDots, maValues []float64)) (applyFn, error) {
+	ctx, sp := observe.Start(ctx, "ma_data")
+	defer sp.End()
+
+	maN, err := data.GetTimePointsData(ctx, start.Add(time.Duration(-n+1)*duration), end, duration)
 	if err != nil {
 		return nil, err
 	}
@@ -157,8 +166,11 @@ func buildMaApplyFn(start, end time.Time, duration time.Duration, n int, fn func
 	}, nil
 }
 
-func buildBollApplyFn(start, end time.Time, duration time.Duration, period int, multiplier float64, fn func(resps []timeseriesDots, bollValues []data.BollingerBand)) (applyFn, error) {
-	dots, err := data.GetTimePointsData(start.Add(time.Duration(-period+1)*duration), end, duration)
+func buildBollApplyFn(ctx context.Context, start time.Time, end time.Time, duration time.Duration, period int, multiplier float64, fn func(resps []timeseriesDots, bollValues []data.BollingerBand)) (applyFn, error) {
+	ctx, sp := observe.Start(ctx, "boll_data")
+	defer sp.End()
+
+	dots, err := data.GetTimePointsData(ctx, start.Add(time.Duration(-period+1)*duration), end, duration)
 	if err != nil {
 		return nil, err
 	}

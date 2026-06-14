@@ -14,7 +14,6 @@ import (
 	"github.com/yikakia/nga_grep/model/gen"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/metric"
-	"go.opentelemetry.io/otel/trace"
 )
 
 var syncMeter = sync.OnceValue(func() metric.Meter {
@@ -99,7 +98,7 @@ func SyncServer(cfg SyncServerConfig) {
 func syncOnce(c *nga.Client, cfg SyncServerConfig) {
 	ctx := context.Background()
 
-	ctx, span := tracer().Start(ctx, "sync")
+	ctx, span := observe.Start(ctx, "sync")
 	defer span.End()
 
 	thread, err := c.Thread("706")
@@ -172,7 +171,3 @@ func syncOnce(c *nga.Client, cfg SyncServerConfig) {
 
 	return
 }
-
-var tracer = sync.OnceValue(func() trace.Tracer {
-	return otel.Tracer("")
-})

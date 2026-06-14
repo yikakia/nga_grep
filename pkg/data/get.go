@@ -1,9 +1,11 @@
 package data
 
 import (
+	"context"
 	"time"
 
 	"github.com/bytedance/gg/gslice"
+	"github.com/yikakia/nga_grep/internal/observe"
 	"github.com/yikakia/nga_grep/model"
 	"github.com/yikakia/nga_grep/model/gen"
 )
@@ -14,7 +16,10 @@ type Dot struct {
 }
 
 // 给定起始截至时间，以及时间间隔，返回多个时间段的发帖量
-func GetTimePointsData(start, end time.Time, duration time.Duration) ([]Dot, error) {
+func GetTimePointsData(ctx context.Context, start, end time.Time, duration time.Duration) ([]Dot, error) {
+	_, sp := observe.Start(ctx, "GetTimePointsData")
+	defer sp.End()
+
 	return getWithSqliteGroupby(start, end, duration)
 }
 

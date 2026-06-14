@@ -14,19 +14,13 @@ import (
 	"github.com/yikakia/nga_grep/internal/env"
 	"github.com/yikakia/nga_grep/internal/observe"
 	"github.com/yikakia/nga_grep/internal/ratelimit"
-	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/trace"
 	"golang.org/x/time/rate"
 )
-
-var tracer = sync.OnceValue(func() trace.Tracer {
-	return otel.Tracer("")
-})
 
 func isAllow(c *gin.Context, start, end time.Time, duration time.Duration) (isAllow bool) {
 	ctx := c.Request.Context()
 	defer func() { recordRateLimit(ctx, isAllow) }()
-	ctx, sp := tracer().Start(ctx, "ratelimit")
+	ctx, sp := observe.Start(ctx, "ratelimit")
 	defer sp.End()
 
 	if duration <= 0 {
