@@ -10,6 +10,7 @@ import (
 	"go.opentelemetry.io/otel/exporters/stdout/stdoutlog"
 	"go.opentelemetry.io/otel/log/global"
 	"go.opentelemetry.io/otel/sdk/log"
+	"go.opentelemetry.io/otel/sdk/resource"
 )
 
 var _initLogger = sync.OnceValues(func() (*log.LoggerProvider, error) {
@@ -26,13 +27,16 @@ var _initLogger = sync.OnceValues(func() (*log.LoggerProvider, error) {
 	}
 	stdoutProcessor := log.NewBatchProcessor(stdoutExporter)
 
-	provider := log.NewLoggerProvider(log.WithProcessor(stdoutProcessor), log.WithProcessor(processor))
+	provider := log.NewLoggerProvider(
+		log.WithProcessor(stdoutProcessor),
+		log.WithProcessor(processor),
+		log.WithResource(resource.NewWithAttributes("", defaultAttributes()...)),
+	)
 	global.SetLoggerProvider(provider)
 
 	// 这里的name是 scope name
 	otelSlogHandler := otelslog.NewHandler("",
 		otelslog.WithLoggerProvider(provider), otelslog.WithSource(true),
-		otelslog.WithAttributes(defaultAttributes()...),
 	)
 
 	slog.SetDefault(slog.New(otelSlogHandler))
