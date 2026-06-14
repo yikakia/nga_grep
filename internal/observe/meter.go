@@ -7,6 +7,7 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp"
 	"go.opentelemetry.io/otel/sdk/metric"
+	"go.opentelemetry.io/otel/sdk/resource"
 )
 
 var _initMeter = sync.OnceValues(func() (*metric.MeterProvider, error) {
@@ -22,6 +23,7 @@ var _initMeter = sync.OnceValues(func() (*metric.MeterProvider, error) {
 		//	attribute.String("vcs.revision", buildinfo.VCSInfo()),
 		//)),
 		metric.WithReader(metric.NewPeriodicReader(exporter)),
+		metric.WithResource(resource.NewWithAttributes("", defaultAttributes()...)),
 	)
 	otel.SetMeterProvider(mp) // 必须注册全局 MeterProvider
 	return mp, nil
