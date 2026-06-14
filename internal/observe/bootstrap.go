@@ -4,7 +4,11 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/bytedance/gg/gcond"
 	"github.com/gin-gonic/gin"
+	"github.com/yikakia/nga_grep/internal/buildinfo"
+	"github.com/yikakia/nga_grep/internal/env"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 func InitAll() error {
@@ -18,6 +22,12 @@ func InitAll() error {
 		return err
 	}
 	return nil
+}
+
+func defaultAttributes() []attribute.KeyValue {
+	kvs := []attribute.KeyValue{buildinfo.VCSAttribute()}
+	kvs = append(kvs, attribute.String("deployment.environment", gcond.If(env.IsProduction(), "production", env.DEPLOYMENT.Get())))
+	return kvs
 }
 
 func OTelAccessLogMiddleware() gin.HandlerFunc {

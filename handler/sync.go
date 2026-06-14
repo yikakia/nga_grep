@@ -101,11 +101,15 @@ func syncOnce(c *nga.Client, cfg SyncServerConfig) {
 	ctx, span := observe.Start(ctx, "sync")
 	defer span.End()
 
+	ctx, cspan := observe.Start(ctx, "curl")
+
 	thread, err := c.Thread("706")
 	if err != nil {
 		slog.ErrorContext(ctx, "query failed.", "err", err.Error())
+		cspan.RecordError(err)
 		panic(err)
 	}
+	cspan.End()
 
 	var ts []*model.ThreadLatestData
 	for _, t := range thread.Data.T {
@@ -122,7 +126,7 @@ func syncOnce(c *nga.Client, cfg SyncServerConfig) {
 
 	tld := gen.Q.ThreadLatestData
 
-	find, err := tld.Where(tld.TID.In(tids...)).Find()
+	find, err := tld.WithContext(ctx).Where(tld.TID.In(tids...)).Find()
 	if err != nil {
 		slog.ErrorContext(ctx, "find from db failed.", "err", err.Error())
 		panic(err)
@@ -144,13 +148,16 @@ func syncOnce(c *nga.Client, cfg SyncServerConfig) {
 		}
 	}
 
+	ctx, sqlSpan := observe.Start(ctx, "sqlite")
+	defer sqlSpan.End()
+
 	err = gen.Q.Transaction(func(tx *gen.Query) error {
-		err := tx.ThreadLatestData.Save(ts...)
+		err := tx.WithContext(ctx).ThreadLatestData.Save(ts...)
 		if err != nil {
 			return fmt.Errorf("insert thread_latest_data failed. err:%w", err)
 		}
 
-		err = tx.ThreadCount.Create(&model.ThreadCount{
+		err = tx.ThreadCount.WithContext(ctx).Create(&model.ThreadCount{
 			DateTime: time.Now().Unix(),
 			Count:    delta,
 		})

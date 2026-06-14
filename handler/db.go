@@ -2,10 +2,13 @@ package handler
 
 import (
 	"fmt"
+	"log/slog"
 	"sync"
 
 	"github.com/yikakia/nga_grep/client"
+	"github.com/yikakia/nga_grep/internal/env"
 	"github.com/yikakia/nga_grep/model/gen"
+	"gorm.io/plugin/opentelemetry/tracing"
 )
 
 var (
@@ -22,7 +25,20 @@ var (
 func InitDefaultDB(dbPath string) {
 	defaultDBOnce.Do(func() {
 		defaultDBPath = dbPath
-		gen.SetDefault(client.NewDB(dbPath))
+		db := client.NewDB(dbPath)
+
+		var traceOpts []tracing.Option
+		// 开发环境才显示查询参数
+		if env.IsProduction() {
+			slog.Info("disable query variables for non-dev env")
+			traceOpts = append(traceOpts, tracing.WithoutQueryVariables())
+		}
+		err := db.Use(tracing.NewPlugin(traceOpts...))
+		if err != nil {
+			panic(err)
+		}
+
+		gen.SetDefault(db)
 	})
 
 	if defaultDBPath != dbPath {

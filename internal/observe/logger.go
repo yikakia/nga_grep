@@ -5,7 +5,6 @@ import (
 	"log/slog"
 	"sync"
 
-	"github.com/yikakia/nga_grep/internal/buildinfo"
 	"go.opentelemetry.io/contrib/bridges/otelslog"
 	"go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploghttp"
 	"go.opentelemetry.io/otel/exporters/stdout/stdoutlog"
@@ -33,7 +32,7 @@ var _initLogger = sync.OnceValues(func() (*log.LoggerProvider, error) {
 	// 这里的name是 scope name
 	otelSlogHandler := otelslog.NewHandler("",
 		otelslog.WithLoggerProvider(provider), otelslog.WithSource(true),
-		otelslog.WithAttributes(buildinfo.VCSAttribute()),
+		otelslog.WithAttributes(defaultAttributes()...),
 	)
 
 	slog.SetDefault(slog.New(otelSlogHandler))

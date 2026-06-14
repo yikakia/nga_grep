@@ -4,7 +4,6 @@ import (
 	"context"
 	"sync"
 
-	"github.com/yikakia/nga_grep/internal/buildinfo"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
@@ -23,7 +22,7 @@ var _initTracer = sync.OnceValues(func() (*sdktrace.TracerProvider, error) {
 	tp := sdktrace.NewTracerProvider(
 		sdktrace.WithSampler(sdktrace.AlwaysSample()),
 		sdktrace.WithBatcher(exporter),
-		sdktrace.WithResource(resource.NewWithAttributes("", buildinfo.VCSAttribute())),
+		sdktrace.WithResource(resource.NewWithAttributes("", defaultAttributes()...)),
 	)
 	otel.SetTracerProvider(tp)
 	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(

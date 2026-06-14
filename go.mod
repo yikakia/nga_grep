@@ -36,8 +36,9 @@ require (
 	golang.org/x/time v0.8.0
 	gorm.io/driver/sqlite v1.5.7
 	gorm.io/gen v0.3.26
-	gorm.io/gorm v1.25.12
-	gorm.io/plugin/dbresolver v1.5.3
+	gorm.io/gorm v1.30.0
+	gorm.io/plugin/dbresolver v1.6.2
+	gorm.io/plugin/opentelemetry v0.1.17-0.20260314125051-f063ba01bd9e
 )
 
 require (

@@ -20,7 +20,7 @@ func GetTimePointsData(ctx context.Context, start, end time.Time, duration time.
 	_, sp := observe.Start(ctx, "GetTimePointsData")
 	defer sp.End()
 
-	return getWithSqliteGroupby(start, end, duration)
+	return getWithSqliteGroupby(ctx, start, end, duration)
 }
 
 func getWithCache(start, end time.Time, duration time.Duration) ([]Dot, error) {
@@ -38,13 +38,13 @@ func getWithCache(start, end time.Time, duration time.Duration) ([]Dot, error) {
 	}
 	return dots, nil
 }
-func getWithSqliteGroupby(start, end time.Time, duration time.Duration) ([]Dot, error) {
+func getWithSqliteGroupby(ctx context.Context, start, end time.Time, duration time.Duration) ([]Dot, error) {
 	startTs := truncateToDuration(start, duration)
 	endTs := truncateToDuration(end.Add(duration), duration)
 	durationSecond := int64(duration.Seconds())
 	tc := gen.Q.ThreadCount
 
-	selectDots, err := tc.SelectDots(startTs, endTs, durationSecond)
+	selectDots, err := tc.WithContext(ctx).SelectDots(startTs, endTs, durationSecond)
 	if err != nil {
 		return nil, err
 	}
