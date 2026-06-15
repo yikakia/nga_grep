@@ -9,6 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/yikakia/nga_grep/internal/observe"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
+	"go.opentelemetry.io/otel/trace"
 )
 
 func newGinEngine(cfg RunHttpServerConfig) (*gin.Engine, error) {
@@ -52,7 +53,14 @@ func newGinEngine(cfg RunHttpServerConfig) (*gin.Engine, error) {
 
 		slog.DebugContext(ctx, "request headers", slog.GroupAttrs("headers", attrs...))
 		c.Next()
+	})
 
+	middlewares = append(middlewares, func(c *gin.Context) {
+		ctx := c.Request.Context()
+		spctx := trace.SpanContextFromContext(ctx)
+		c.Header("trace_id", spctx.TraceID().String())
+
+		c.Next()
 	})
 
 	r.Use(middlewares...)

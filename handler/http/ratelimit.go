@@ -43,6 +43,7 @@ func isAllow(c *gin.Context, start, end time.Time, duration time.Duration) (isAl
 	// 如果查询量小，不是明细，则直接放行，但是计入额度
 	if cost < 1000 {
 		nctx := context.WithoutCancel(ctx)
+		sp.SetAttributes(attribute.Bool("skip", true))
 		go panics.Try(func() {
 			doAllow(nctx, key, cost)
 		})
