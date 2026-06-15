@@ -7,6 +7,7 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/yikakia/nga_grep/internal"
 	"github.com/yikakia/nga_grep/internal/observe"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 	"go.opentelemetry.io/otel/trace"
@@ -59,9 +60,8 @@ func newGinEngine(cfg RunHttpServerConfig) (*gin.Engine, error) {
 		ctx := c.Request.Context()
 		spctx := trace.SpanContextFromContext(ctx)
 		c.Header("trace_id", spctx.TraceID().String())
-
 		c.Next()
-	})
+	}, internal.ResponseTimeHeader())
 
 	r.Use(middlewares...)
 
