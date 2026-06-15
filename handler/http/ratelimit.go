@@ -42,8 +42,9 @@ func isAllow(c *gin.Context, start, end time.Time, duration time.Duration) (isAl
 	slog.DebugContext(ctx, "call http allow.", "key", key, "cost", cost)
 	// 如果查询量小，不是明细，则直接放行，但是计入额度
 	if cost < 1000 {
+		nctx := context.WithoutCancel(ctx)
 		go panics.Try(func() {
-			doAllow(ctx, key, cost)
+			doAllow(nctx, key, cost)
 		})
 		return true
 	}
