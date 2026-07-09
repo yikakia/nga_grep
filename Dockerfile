@@ -18,7 +18,7 @@ RUN --mount=type=cache,target=/go/pkg/mod \
     GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o /nga_grep .
 
 # final stage — distroless base (glibc, OpenSSL, CA certs, tzdata; no shell)
-FROM gcr.io/distroless/base-debian13
+FROM gcr.io/distroless/base-debian13:debug
 
 # 设置时区为北京时间（UTC+8） — distroless 内置 tzdata，直接设 TZ 即可
 ENV TZ=Asia/Shanghai
