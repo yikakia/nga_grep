@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/bytedance/gg/gcond"
 	"github.com/samber/lo"
 	"github.com/yikakia/nga"
 	"github.com/yikakia/nga_grep/internal/observe"
@@ -42,6 +43,8 @@ type SyncServerConfig struct {
 	Uid string
 	Url string
 	DB  string
+	// 大时代关版后的合集 47206901
+	STID string
 	// 贴子的下限阈值
 	ThresholdLow  int
 	ThresholdHigh int
@@ -103,7 +106,10 @@ func syncOnce(c *nga.Client, cfg SyncServerConfig) {
 
 	ctx, cspan := observe.Start(ctx, "curl")
 
-	thread, err := c.Thread("706")
+	// 如果 stid没有配置，那么就用板块id 不然就直接用 stid
+	thread, err := c.Thread(
+		gcond.If(cfg.STID == "", "706", ""),
+		nga.WithQueryParam("stid", cfg.STID))
 	if err != nil {
 		slog.ErrorContext(ctx, "query failed.", "err", err.Error())
 		cspan.RecordError(err)

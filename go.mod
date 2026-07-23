@@ -17,7 +17,7 @@ require (
 	github.com/stretchr/testify v1.11.1
 	github.com/yikakia/cachalot v0.0.0-20260226152304-a878b4317f2a
 	github.com/yikakia/cachalot/stores/ristretto v0.0.0-20260226152304-a878b4317f2a
-	github.com/yikakia/nga v0.0.0-20250407135451-036ea23d79f8
+	github.com/yikakia/nga v0.0.0-20260723080244-c9325120e8c7
 	go.opentelemetry.io/contrib/bridges/otelslog v0.18.0
 	go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin v0.68.0
 	go.opentelemetry.io/otel v1.44.0

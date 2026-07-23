@@ -11,6 +11,8 @@ services:
       - --loop-max=4m50s
       - --loop-min=30s
       - --th-lf=1.3
+      # - --stid=47206901
+      # 大时代关版了，换成了合集，更新数据用这个指定合集id 不传该参数则使用fid=706进行请求
     environment:
       - OTEL_SERVICE_NAME=sync
     env_file:

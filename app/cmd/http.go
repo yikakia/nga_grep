@@ -21,6 +21,7 @@ var (
 	modes []string
 
 	// sync
+
 	cid                 string
 	uid                 string
 	url                 string
@@ -30,6 +31,9 @@ var (
 	thresholdHighFactor float64
 	loopMin             time.Duration
 	loopMax             time.Duration
+
+	// 可能为空 合集板块
+	stid string
 )
 
 func init() {
@@ -102,6 +106,7 @@ func buildSyncConfig() handler.SyncServerConfig {
 		Uid:                 uid,
 		Url:                 url,
 		DB:                  dbPath,
+		STID:                stid,
 		ThresholdLow:        thresholdLow,
 		ThresholdHigh:       thresholdHigh,
 		ThresholdLowFactor:  thresholdLowFactor,
@@ -112,6 +117,7 @@ func buildSyncConfig() handler.SyncServerConfig {
 }
 
 func addSyncFlags(cmd *cobra.Command) {
+	cmd.Flags().StringVar(&stid, "stid", "", "stid 大时代关版后的合集")
 	cmd.Flags().StringVar(&cid, "cid", "cid", "cookie 中的 ngaPassportCid")
 	cmd.Flags().StringVar(&uid, "uid", "uid", "cookie 中的 ngaPassportUid")
 	cmd.Flags().StringVar(&url, "url", "https://bbs.nga.cn", "nga域名")
