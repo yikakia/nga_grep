@@ -146,7 +146,17 @@ func syncOnce(c *nga.Client, cfg SyncServerConfig) {
 	for _, t := range ts {
 		if v, ok := findMap[t.TID]; ok {
 			if v.LastReplyCount != t.LastReplyCount {
-				delta += t.LastReplyCount - v.LastReplyCount
+				curDelta := t.LastReplyCount - v.LastReplyCount
+				if curDelta < 0 {
+					// 不知道为什么会小于0 先打日志记录一下
+					slog.ErrorContext(ctx, "delta < 0",
+						slog.Group("wiredDelta",
+							slog.Int("tid", t.TID),
+							slog.Int("lastReplyCount", t.LastReplyCount),
+							slog.Int("curLastReplyCnt", v.LastReplyCount),
+							slog.Int("delta", curDelta)))
+				}
+				delta += curDelta
 				deltaThread++
 			}
 		} else {
