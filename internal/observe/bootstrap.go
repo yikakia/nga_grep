@@ -1,14 +1,19 @@
 package observe
 
 import (
+	"context"
 	"log/slog"
 	"time"
 
 	"github.com/bytedance/gg/gcond"
+	"github.com/bytedance/gg/gresult"
 	"github.com/gin-gonic/gin"
 	"github.com/yikakia/nga_grep/internal/buildinfo"
 	"github.com/yikakia/nga_grep/internal/env"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/sdk/log"
+	"go.opentelemetry.io/otel/sdk/metric"
+	"go.opentelemetry.io/otel/sdk/trace"
 )
 
 func InitAll() error {
@@ -49,4 +54,19 @@ func OTelAccessLogMiddleware() gin.HandlerFunc {
 			"client_ip", c.ClientIP(),
 		)
 	}
+}
+
+func FlushAll(ctx context.Context) {
+	gresult.Of(_initLogger()).IfOK(func(lp *log.LoggerProvider) {
+		lp.ForceFlush(ctx)
+	})
+
+	gresult.Of(_initMeter()).IfOK(func(mp *metric.MeterProvider) {
+		mp.ForceFlush(ctx)
+	})
+
+	gresult.Of(_initTracer()).IfOK(func(tp *trace.TracerProvider) {
+		tp.ForceFlush(ctx)
+	})
+
 }
