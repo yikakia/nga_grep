@@ -92,13 +92,18 @@ func SyncServer(cfg SyncServerConfig) {
 	slog.Info("server start success")
 
 	for {
-		syncOnce(c, cfg)
+		err := syncOnce(c, cfg)
+		if err != nil {
+			nextDuration = cfg.LoopMin
+			slog.Error("sync failed", slog.Any("error", err), slog.Duration("nextDuration", nextDuration))
+		}
+
 		time.Sleep(nextDuration)
 	}
 
 }
 
-func syncOnce(c *nga.Client, cfg SyncServerConfig) {
+func syncOnce(c *nga.Client, cfg SyncServerConfig) error {
 	ctx := context.Background()
 
 	ctx, span := observe.Start(ctx, "sync")
@@ -111,9 +116,10 @@ func syncOnce(c *nga.Client, cfg SyncServerConfig) {
 		gcond.If(cfg.STID == "", "706", ""),
 		nga.WithQueryParam("stid", cfg.STID))
 	if err != nil {
-		slog.ErrorContext(ctx, "query failed.", "err", err.Error())
+		// slog.ErrorContext(ctx, "query failed.", "err", err.Error())
 		cspan.RecordError(err)
-		panic(err)
+
+		return fmt.Errorf("query failed: %w", err)
 	}
 	cspan.End()
 
@@ -134,8 +140,8 @@ func syncOnce(c *nga.Client, cfg SyncServerConfig) {
 
 	find, err := tld.WithContext(ctx).Where(tld.TID.In(tids...)).Find()
 	if err != nil {
-		slog.ErrorContext(ctx, "find from db failed.", "err", err.Error())
-		panic(err)
+		// slog.ErrorContext(ctx, "find from db failed.", "err", err.Error())
+		return fmt.Errorf("find from db failed: %w", err)
 	}
 
 	findMap := lo.SliceToMap(find, func(item *model.ThreadLatestData) (int, *model.ThreadLatestData) {
@@ -184,7 +190,7 @@ func syncOnce(c *nga.Client, cfg SyncServerConfig) {
 	})
 	if err != nil {
 		slog.ErrorContext(ctx, "update failed.", "err", err.Error())
-		panic(err)
+		return fmt.Errorf("update failed: %w", err)
 	}
 
 	recordSyncResult(delta, deltaThread)
@@ -192,5 +198,5 @@ func syncOnce(c *nga.Client, cfg SyncServerConfig) {
 	slog.InfoContext(ctx, "sync success", "delta", delta)
 	updateNextDuration(ctx, deltaThread, cfg)
 
-	return
+	return nil
 }
