@@ -149,18 +149,19 @@ func syncOnce(c *nga.Client, cfg SyncServerConfig) error {
 	})
 
 	var delta, deltaThread int
-	for _, t := range ts {
-		if v, ok := findMap[t.TID]; ok {
-			if v.LastReplyCount != t.LastReplyCount {
-				curDelta := t.LastReplyCount - v.LastReplyCount
+	for _, syncData := range ts {
+		if dbData, ok := findMap[syncData.TID]; ok {
+			if dbData.LastReplyCount != syncData.LastReplyCount {
+				curDelta := syncData.LastReplyCount - dbData.LastReplyCount
 				if curDelta < 0 {
-					// 不知道为什么会小于0 先打日志记录一下
+					// 小于0的原因目前发现是删帖，先记录所有的数据再观察
 					slog.ErrorContext(ctx, "delta < 0",
 						slog.Group("wiredDelta",
-							slog.Int("tid", t.TID),
-							slog.Int("lastReplyCount", t.LastReplyCount),
-							slog.Int("curLastReplyCnt", v.LastReplyCount),
-							slog.Int("delta", curDelta)))
+							slog.Int("tid", syncData.TID),
+							slog.Int("lastReplyCount", syncData.LastReplyCount),
+							slog.Int("curLastReplyCnt", dbData.LastReplyCount),
+							slog.Int("delta", curDelta)),
+						slog.Any("threadResp", *thread))
 				}
 				delta += curDelta
 				deltaThread++
