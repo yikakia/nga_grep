@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/bytedance/gg/gcond"
+	"github.com/bytedance/gg/gslice"
 	"github.com/samber/lo"
 	"github.com/yikakia/nga"
 	"github.com/yikakia/nga_grep/internal/observe"
@@ -131,10 +132,9 @@ func syncOnce(c *nga.Client, cfg SyncServerConfig) error {
 			LastReplyCount: t.Replies,
 		})
 	}
-	var tids []int
-	for _, t := range ts {
-		tids = append(tids, t.TID)
-	}
+	var tids = gslice.Map(ts, func(f *model.ThreadLatestData) int {
+		return f.TID
+	})
 
 	tld := gen.Q.ThreadLatestData
 
