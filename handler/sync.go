@@ -9,6 +9,7 @@ import (
 
 	"github.com/bytedance/gg/gcond"
 	"github.com/bytedance/gg/gslice"
+	"github.com/davecgh/go-spew/spew"
 	"github.com/samber/lo"
 	"github.com/yikakia/nga"
 	"github.com/yikakia/nga_grep/internal/observe"
@@ -126,6 +127,11 @@ func syncOnce(c *nga.Client, cfg SyncServerConfig) error {
 
 	var ts []*model.ThreadLatestData
 	for _, t := range thread.Data.T {
+		// 可能会出现这种问题 目前认为这个是删帖，所以要提前过滤掉这个情况，但不影响正常逻辑的执行
+		if t.Postdate == 0 && t.Lastpost == 0 && t.Replies == 0 && t.Type == 65536 {
+			slog.WarnContext(ctx, "found wired post", slog.Any("post", t))
+			continue
+		}
 		ts = append(ts, &model.ThreadLatestData{
 			TID:            t.Tid,
 			LastTime:       time.Unix(int64(t.Lastpost), 0),
@@ -155,13 +161,15 @@ func syncOnce(c *nga.Client, cfg SyncServerConfig) error {
 				curDelta := syncData.LastReplyCount - dbData.LastReplyCount
 				if curDelta < 0 {
 					// 小于0的原因目前发现是删帖，先记录所有的数据再观察
+					// 由于上面已经过滤过一次了，因此此时出现的异常帖子不是已知的模式，需要打印出来具体分析
 					slog.ErrorContext(ctx, "delta < 0",
 						slog.Group("wiredDelta",
 							slog.Int("tid", syncData.TID),
 							slog.Int("lastReplyCount", syncData.LastReplyCount),
 							slog.Int("curLastReplyCnt", dbData.LastReplyCount),
-							slog.Int("delta", curDelta)),
-						slog.Any("threadResp", *thread))
+							slog.Int("delta", curDelta),
+							slog.String("threadResp", spew.Sdump(thread))),
+					)
 				}
 				delta += curDelta
 				deltaThread++
