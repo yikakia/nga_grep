@@ -128,8 +128,8 @@ func syncOnce(c *nga.Client, cfg SyncServerConfig) error {
 	var ts []*model.ThreadLatestData
 	for _, t := range thread.Data.T {
 		// 可能会出现这种问题 目前认为这个是删帖，所以要提前过滤掉这个情况，但不影响正常逻辑的执行
-		if t.Postdate == 0 && t.Lastpost == 0 && t.Replies == 0 && t.Type == 65536 {
-			slog.WarnContext(ctx, "found wired post", slog.Any("post", t))
+		if t.Postdate == 0 && t.Lastpost == 0 && t.Replies == 0 {
+			slog.WarnContext(ctx, "found wired post skip", slog.Any("post", t))
 			continue
 		}
 		ts = append(ts, &model.ThreadLatestData{
